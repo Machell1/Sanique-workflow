@@ -205,6 +205,7 @@ declare global {
       app: {
         version: () => Promise<string>;
         dataDir: () => Promise<string>;
+        print: () => Promise<{ ok: boolean; error?: string | null }>;
       };
     };
   }

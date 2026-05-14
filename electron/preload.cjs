@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('claw', {
   app: {
     version: () => ipcRenderer.invoke('claw:version'),
     dataDir: () => ipcRenderer.invoke('claw:dataDir'),
+    print: () => ipcRenderer.invoke('claw:print'),
   },
 });

@@ -123,6 +123,22 @@ function openDocument(id) {
   return { path: fullPath, exists: fs.existsSync(fullPath) };
 }
 
+function readBytes(id) {
+  const doc = getDocument(id);
+  if (!doc) throw new Error('Document not found');
+  const fullPath = path.join(getFilesDir(), doc.storage_path);
+  if (!fs.existsSync(fullPath)) throw new Error('File missing from vault');
+  // Return base64 so it survives the IPC serialization; renderer decodes.
+  const buf = fs.readFileSync(fullPath);
+  return {
+    base64: buf.toString('base64'),
+    mime: doc.mime_type || 'application/octet-stream',
+    size: buf.length,
+    sha256: doc.sha256,
+    filename: doc.original_name,
+  };
+}
+
 module.exports = {
   'documents:list': (args) => listDocuments(args || {}),
   'documents:get': (args) => getDocument(args.id),
@@ -130,4 +146,5 @@ module.exports = {
   'documents:update': (args) => updateDocument(args.id, args.patch, args.actor),
   'documents:delete': (args) => deleteDocument(args.id, args.actor),
   'documents:resolve': (args) => openDocument(args.id),
+  'documents:readBytes': (args) => readBytes(args.id),
 };

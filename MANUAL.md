@@ -1,7 +1,7 @@
 # CLAW — User Manual
 
 **Commonwealth Legal Automation Workflow Platform**
-Court of Appeal, Jamaica · Version 2.3.0
+Court of Appeal, Jamaica · Version 2.4.0
 
 This manual shows you how to do the day's work in CLAW. It is task-driven —
 look for the heading that matches what you need to do, follow the numbered
@@ -21,9 +21,11 @@ steps, and skip anything that does not apply.
 8. [Asking KIMI CLAW for help](#8-asking-kimi-claw-for-help)
 9. [Running the pipeline — workflow board](#9-running-the-pipeline--workflow-board)
 10. [Audit ledger — proving nothing was tampered with](#10-audit-ledger--proving-nothing-was-tampered-with)
-11. [Backing up and moving CLAW between machines](#11-backing-up-and-moving-claw-between-machines)
-12. [Troubleshooting](#12-troubleshooting)
-13. [Keyboard shortcuts and small conveniences](#13-keyboard-shortcuts-and-small-conveniences)
+11. [Reading documents in-app](#11-reading-documents-in-app)
+12. [Global search](#12-global-search)
+13. [Backing up and moving CLAW between machines](#13-backing-up-and-moving-claw-between-machines)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Keyboard shortcuts and small conveniences](#15-keyboard-shortcuts-and-small-conveniences)
 
 ---
 
@@ -171,10 +173,12 @@ To inspect a single case:
 
 To open a document filed in the cabinet:
 
-8. In the **Documents in this folder** list, click the small external-
-   link icon next to the document. CLAW asks Windows to open the file
-   with its registered application (Adobe Reader for PDF, Word for
-   DOCX, and so on).
+8. In the **Documents in this folder** list, click the **eye** icon to
+   read the document **inside CLAW** (PDF, DOCX, images and text all
+   render natively). Click the **arrow** icon if you want it to open
+   in the default Windows app instead (Adobe Reader, Word, etc.). See
+   *§11 Reading documents in-app* for what the in-app viewer can and
+   can't do.
 
 To change the status of a case (e.g. *open* → *reserved* on the day
 the bench reserves judgment):
@@ -324,7 +328,9 @@ Leave **Linked case** as *— Unfiled —*. The document goes into
 
 The Generator carries four templates: **Memo**, **Counsel's Written Advice**,
 **Draft Reasons for Judgment**, and **Draft Order**. Each one scaffolds a
-document in the Court's house style and lets you edit it inline.
+document in the Court's house style. From v2.4.0 the editor is a
+**split-pane Markdown editor** — Markdown source on the left, live
+formatted preview on the right.
 
 ### 6.1 Generate the scaffold
 
@@ -345,30 +351,54 @@ document in the Court's house style and lets you edit it inline.
      into the template.
 6. **Generate.**
 
-### 6.2 Edit inline
+### 6.2 Edit in the split-pane Markdown editor
 
-The draft opens in the right pane. Everything is editable:
+The draft opens with two panes side-by-side:
+
+- **Left:** the Markdown source (mono-typed textarea). Type freely.
+- **Right:** the live rendered preview, styled with the same typography
+  CLAW uses to display Word documents in-app.
+
+Above the editor sits a toolbar with quick-insert buttons for the
+common formatting moves:
+
+- **Bold** — `**text**` (or `Ctrl+B`)
+- **Italic** — `*text*` (or `Ctrl+I`)
+- **Heading 1 / 2** — `#` / `##` at the start of a line
+- **Bulleted list** — `- ` at the start of a line
+- **Numbered list** — `1. ` at the start of a line
+- **Blockquote** — `> ` at the start of a line
+
+Click any toolbar icon and the relevant Markdown is inserted around
+your selection (or on the current line for the line-prefixed ones).
+The right pane updates as you type. There is also an **eye / eye-off**
+toggle that hides the source and shows only the preview — useful when
+reading back through a long judgment.
+
+Other controls along the top:
 
 - **Title** — top left, click to rename.
-- **Status** — top right dropdown. Move *Draft → Reviewed → Final* as
-  the document matures.
-- **Body** — the large mono-typed text area. Edit freely.
+- **Status** — dropdown. Move *Draft → Reviewed → Final* as the
+  document matures.
+- **Save changes** (gilt) — persists your edits. The status badge in
+  the left list updates.
 
-Click **Save changes** (gilt) when you are done. The status badge in
-the left list updates.
-
-### 6.3 Copy, export, delete
+### 6.3 Copy, export, print, delete
 
 The icon row at the top of the editor:
 
-- **Copy icon** — copies the body to the clipboard. Paste anywhere for
-  ad-hoc reuse.
+- **Copy icon** — copies the Markdown source to the clipboard.
 - **Download icon** — exports as a plain `.txt` file using the
   document's title as the filename.
-- **Document icon** (next to Download) — **exports as a Microsoft Word
-  `.docx` file**, with the title styled as a centred heading and the
-  body laid out as paragraphs. Open straight into Word for final
-  formatting and signature.
+- **Document icon** — **exports as a Microsoft Word `.docx` file**. The
+  Markdown is honoured: headings become Word headings, lists become
+  numbered / bulleted Word lists, blockquotes are indented, **bold**
+  and *italic* survive the round-trip.
+- **Printer icon** — opens the **system print dialog** with a
+  print-friendly version of the rendered preview. Use this for hard
+  copy to the bench. The print version uses one-inch margins, the
+  Court's serif typography, and (if the provenance setting is on)
+  prints the document ID and timestamp in small grey type at the foot.
 - **Trash icon** — deletes the draft. Audited.
 
 ### 6.4 The provenance seal on exported drafts
@@ -669,12 +699,96 @@ namespaced like `case.create`, `document.upload`, `verification.run`.
 
 ---
 
-## 11. Backing up and moving CLAW between machines
+## 11. Reading documents in-app
+
+From v2.4.0 you no longer need to leave CLAW to read a filed document.
+Click the **eye** icon next to any document in the File Cabinet and a
+full-screen viewer opens.
+
+### 11.1 What the viewer can render
+
+- **PDF** — rendered by the bundled Chromium PDF viewer. You get the
+  usual toolbar (page navigation, zoom, fit-to-width, print this PDF,
+  save a copy).
+- **Word (.docx)** — converted to HTML in-process and styled with the
+  Court's typography. Headings, lists, blockquotes, **bold** and
+  *italic*, tables and images all carry over. The original `.docx`
+  itself is untouched in the vault.
+- **Images** (PNG, JPEG, GIF, WebP, SVG, BMP) — shown full-screen on
+  an obsidian backdrop, scaled to fit.
+- **Plain text** (.txt, .md, .csv, .json, .xml, .html) — shown as a
+  scrollable monospace view.
+
+For anything CLAW does not recognise — `.xlsx`, `.pptx`, exotic CAD
+files, video, etc. — the viewer offers a one-click fallback to the
+default Windows app for that file type.
+
+### 11.2 The viewer header
+
+The viewer header always shows the document's filename, category,
+size, upload timestamp, and the first 14 characters of its
+**SHA-256**. From the header you can:
+
+- **Shield icon** — save the document's provenance certificate.
+- **Arrow-out icon** — close the in-app viewer and open the document
+  with its default Windows app (useful if you need Word's review
+  tools).
+- **X icon** (or **Esc**) — close the viewer.
+
+### 11.3 What the viewer cannot do
+
+It is **read-only**. There is no in-app highlighting, sticky notes, or
+mark-up — for those, open the file in Adobe Reader (PDF) or Word
+(DOCX) via the arrow-out icon. CLAW's audit ledger does not track
+annotations made in external apps.
+
+## 12. Global search
+
+The **Search** entry on the sidebar opens a single, fast search box
+that runs across every searchable piece of state CLAW holds:
+
+- **Cases** — case number, title, parties, description.
+- **Documents** — original filename, notes.
+- **Generated drafts** — title and **the full body content** of every
+  memo / advice / judgment / order.
+- **KIMI CLAW conversations** — every message (user and assistant).
+- **Audit ledger** — action, entity ID, payload, actor name.
+
+### 14.1 How to use it
+
+1. Type two or more characters. Results appear as you type — the last
+   word is prefix-matched, so `judg` finds `judgment`, `judging`,
+   `judges`, etc.
+2. Use quotes to require an exact phrase: `"section 24"` only matches
+   that phrase, not `section` and `24` separately.
+3. Hits are grouped by kind. Click any row to jump to the module that
+   owns it; CLAW lands you on the right page (the Audit module for an
+   audit hit, the File Cabinet for a case, and so on).
+
+### 14.2 What's indexed when
+
+The index is maintained by SQLite triggers, so every new case, every
+upload, every saved draft, every KIMI message and every audit entry
+becomes searchable **immediately** — no batch job to wait for. If you
+upgrade from v2.3 and earlier, the first launch backfills the search
+index across all existing data; it runs once and takes a moment on
+large vaults.
+
+### 14.3 What's *not* indexed
+
+- The **contents of uploaded PDFs and Word documents.** CLAW does not
+  extract text from binary files yet. To find a phrase inside an
+  uploaded PDF, open the file (in-app or in Adobe Reader) and use the
+  PDF's own search.
+- Confidence scores and timestamps. Use the dedicated filters in the
+  Verification and Audit modules for time-based queries.
+
+## 13. Backing up and moving CLAW between machines
 
 CLAW keeps everything in one folder. Back that folder up and you have
 backed up the application.
 
-### 11.1 Where it lives
+### 13.1 Where it lives
 
 `C:\Users\<you>\AppData\Roaming\CLAW\claw-data\`
 
@@ -689,7 +803,7 @@ Inside:
 You can open this folder from inside the app: **Settings → Data
 location → Open in File Explorer**.
 
-### 11.2 Daily backup
+### 13.2 Daily backup
 
 The simplest reliable plan:
 
@@ -702,7 +816,7 @@ If you are willing to lose the last minute or two of work, you can
 skip the close step. SQLite WAL mode is crash-safe but a live copy may
 miss in-flight changes.
 
-### 11.3 Move CLAW to a new machine
+### 13.3 Move CLAW to a new machine
 
 1. Install CLAW on the new machine (download the same version of
    `CLAW-Setup-x.y.z.exe` and run it).
@@ -714,7 +828,7 @@ miss in-flight changes.
 4. Open CLAW. Your cases, documents, calendar, audit log — all of it
    should be there.
 
-### 11.4 Multi-user on shared hardware
+### 13.4 Multi-user on shared hardware
 
 CLAW is single-user per Windows account. Each user gets their own
 `%APPDATA%\CLAW\claw-data\` folder.
@@ -735,7 +849,7 @@ Switching users only changes whose name lands on the audit log; it does
 not change which Windows account or which data folder is in use.
 **Do not share a Windows account** if you need genuine separation.
 
-### 11.5 Uninstalling
+### 13.5 Uninstalling
 
 Settings → Apps → search for **CLAW v2.1.0** → **Uninstall**. By
 default the uninstaller leaves `claw-data` alone (your data survives).
@@ -744,14 +858,14 @@ uninstaller finishes.
 
 ---
 
-## 12. Troubleshooting
+## 14. Troubleshooting
 
-### 12.1 Windows SmartScreen warns on first launch
+### 14.1 Windows SmartScreen warns on first launch
 
 The installer is unsigned. Windows shows *"Windows protected your PC"*.
 Click **More info → Run anyway**. This is a one-time prompt.
 
-### 12.2 CLAW opens to a black window and never paints
+### 14.2 CLAW opens to a black window and never paints
 
 Quit (Alt+F4), re-open. If it happens twice in a row, the renderer
 process is wedged. Most often this is a GPU driver issue:
@@ -761,13 +875,13 @@ process is wedged. Most often this is a GPU driver issue:
    not exist) with the single line `--disable-gpu`.
 3. Re-open.
 
-### 12.3 "Database is locked" toast
+### 14.3 "Database is locked" toast
 
 Two CLAW windows are running at once, fighting over `claw.db`. Quit
 both. Open Task Manager and end any leftover `CLAW.exe` processes.
 Re-open once.
 
-### 12.4 Citation parser missed an obvious citation
+### 14.4 Citation parser missed an obvious citation
 
 The parser does not catch every form. The reliable workaround:
 
@@ -778,12 +892,12 @@ If you find a citation form that *should* be recognised, save the
 example — the parser regexes live in `electron/ipc/verification.cjs`
 and can be extended.
 
-### 12.5 KIMI CLAW says "AI provider is not configured"
+### 14.5 KIMI CLAW says "AI provider is not configured"
 
 Settings → AI provider → set provider → paste a fresh key → Save.
 Re-open the Agent. See *§1.2*.
 
-### 12.6 KIMI CLAW replies with a `[Provider error]`
+### 14.6 KIMI CLAW replies with a `[Provider error]`
 
 The HTTP call to Anthropic or OpenAI failed. Common causes:
 
@@ -794,12 +908,12 @@ The HTTP call to Anthropic or OpenAI failed. Common causes:
 - Model name typo. Settings → AI provider → Model. Defaults are
   `claude-sonnet-4-6` (Anthropic) and `gpt-4o` (OpenAI).
 
-### 12.7 "An audit entry hash mismatched" on startup
+### 14.7 "An audit entry hash mismatched" on startup
 
 The chain is broken. See *§10.3*. Stop using the app until your
 supervisor has reviewed.
 
-### 12.8 Uploaded a 2 GB scanned bundle, app got slow
+### 14.8 Uploaded a 2 GB scanned bundle, app got slow
 
 CLAW handles files up to a few hundred megabytes comfortably. For
 multi-gigabyte bundles, split into volumes and upload as separate
@@ -809,15 +923,22 @@ files.
 
 ---
 
-## 13. Keyboard shortcuts and small conveniences
+## 15. Keyboard shortcuts and small conveniences
 
+- **Ctrl+B** / **Ctrl+I** in the Generator — bold or italic the
+  selection.
 - **Ctrl+Enter** in any KIMI CLAW textarea — send the message.
-- **Esc** — closes any open dialog.
+- **Esc** — closes any open dialog or the document viewer.
+- **Click a calendar event chip** — opens the edit form for that
+  event with all fields pre-filled.
 - **Click a calendar day** — opens the New event dialog with the day
   pre-filled.
 - **Search box on the File Cabinet** — filters by case number, title,
   appellant or respondent in real time.
-- **Workflow card hover** — surfaces the Advance and Delete actions.
+- **Sidebar → Search** — global full-text search across cases,
+  documents, drafts, KIMI conversations and the audit ledger.
+- **Workflow card hover** — surfaces the advance / retreat / edit /
+  block / delete actions.
 - **Sidebar collapse button** (top of the sidebar) — collapses the rail
   to icons-only when you need more horizontal space.
 
@@ -850,10 +971,14 @@ files.
 | Switch which user appears on the audit log           | Settings → Users → Switch                   |
 | Add or remove a user from the directory              | Settings → Users → Add user / bin           |
 | Change AI provider, compliance, data path            | Settings                                    |
+| Read a PDF or Word doc without leaving CLAW          | File Cabinet → document → eye icon          |
+| Print a draft for the bench                          | Generator → open draft → printer icon       |
+| Format a draft (bold, lists, headings, quotations)   | Generator → toolbar, or type Markdown       |
+| Find a phrase across every case / draft / KIMI msg   | Sidebar → Search                            |
 
 ---
 
-**Court of Appeal, Jamaica · CLAW v2.3.0**
-For technical support, see *§12 Troubleshooting* first, then escalate
+**Court of Appeal, Jamaica · CLAW v2.4.0**
+For technical support, see *§14 Troubleshooting* first, then escalate
 to your system administrator. The source code and the change log live
 at <https://github.com/Machell1/Sanique-workflow>.

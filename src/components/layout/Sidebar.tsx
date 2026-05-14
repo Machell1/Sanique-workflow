@@ -10,12 +10,14 @@ import {
   FileText,
   History,
   Settings as SettingsIcon,
+  Search as SearchIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
 
 const items = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/search', label: 'Search', icon: SearchIcon },
   { to: '/schedule', label: 'Schedule', icon: Calendar },
   { to: '/upload', label: 'Upload', icon: Upload },
   { to: '/cabinet', label: 'File Cabinet', icon: Folders },

@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain, shell, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, Menu, protocol, net } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const { pathToFileURL } = require('node:url');
 
 const isDev = !!process.env.CLAW_DEV;
 
@@ -163,13 +164,49 @@ function registerIpc() {
 
   ipcMain.handle('claw:version', () => app.getVersion());
   ipcMain.handle('claw:dataDir', () => dbConnection.getDataDir());
+
+  ipcMain.handle('claw:print', async () => {
+    if (!mainWindow) return { ok: false, error: 'No window' };
+    return new Promise((resolve) => {
+      mainWindow.webContents.print({ silent: false, printBackground: true }, (success, failureReason) => {
+        resolve({ ok: success, error: success ? null : failureReason });
+      });
+    });
+  });
 }
+
+// Privileged protocol must be registered BEFORE app.ready
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'claw', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: false } },
+]);
 
 app.whenReady().then(() => {
   // Lazy-require so DB initializes after app.getPath() is available
   dbConnection = require('./db/connection.cjs');
   dbConnection.init(app.getPath('userData'));
   ipcRouter = require('./ipc/index.cjs');
+
+  // Serve vault files via claw://files/<doc-id> so renderer can <iframe> PDFs
+  // without us having to base64-encode large documents into memory.
+  protocol.handle('claw', (request) => {
+    try {
+      const url = new URL(request.url);
+      if (url.hostname === 'files') {
+        const id = url.pathname.replace(/^\//, '');
+        const db = dbConnection.get();
+        const doc = db.prepare('SELECT * FROM documents WHERE id = ?').get(id);
+        if (!doc) return new Response('Not found', { status: 404 });
+        const filesDir = dbConnection.getFilesDir();
+        const fullPath = path.join(filesDir, doc.storage_path);
+        if (!fs.existsSync(fullPath)) return new Response('File missing on disk', { status: 410 });
+        return net.fetch(pathToFileURL(fullPath).toString());
+      }
+      return new Response('Unknown route', { status: 404 });
+    } catch (err) {
+      console.error('[protocol:claw]', err);
+      return new Response(String(err), { status: 500 });
+    }
+  });
 
   registerIpc();
   buildMenu();

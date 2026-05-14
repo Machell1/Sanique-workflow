@@ -10,6 +10,7 @@ import { Workflow } from './pages/Workflow';
 import { Generator } from './pages/Generator';
 import { Audit } from './pages/Audit';
 import { Settings } from './pages/Settings';
+import { GlobalSearch } from './pages/Search';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="workflow" element={<Workflow />} />
         <Route path="generator" element={<Generator />} />
         <Route path="audit" element={<Audit />} />
+        <Route path="search" element={<GlobalSearch />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -35,6 +35,7 @@ export const api = {
     update: (id: string, patch: any, actor?: any) => invoke('documents:update', { id, patch, actor }),
     delete: (id: string, actor?: any) => invoke('documents:delete', { id, actor }),
     resolve: (id: string) => invoke('documents:resolve', { id }),
+    readBytes: (id: string) => invoke('documents:readBytes', { id }),
   },
   // Workflow
   workflow: {
@@ -110,6 +111,10 @@ export const api = {
   // Dashboard
   dashboard: {
     snapshot: () => invoke('dashboard:snapshot'),
+  },
+  // Search
+  search: {
+    global: (query: string, limit = 12) => invoke('search:global', { query, limit }),
   },
 };
 

@@ -2,7 +2,7 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' claw:; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: claw:; connect-src 'self' claw: blob: https://api.anthropic.com https://api.openai.com; frame-src 'self' claw: blob:; object-src 'self' claw: blob:; worker-src 'self' blob:" />
     <link rel="icon" type="image/svg+xml" href="/claw-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FolderClosed, FolderOpen, Plus, FileText, Trash2, ExternalLink, Search, Pencil, ShieldCheck } from 'lucide-react';
+import { FolderClosed, FolderOpen, Plus, FileText, Trash2, ExternalLink, Search, Pencil, ShieldCheck, Eye } from 'lucide-react';
 import { saveAs } from 'file-saver';
+import { DocumentViewer } from '../components/viewers/DocumentViewer';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
@@ -40,6 +41,7 @@ export function FileCabinet() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editDoc, setEditDoc] = useState<CourtDocument | null>(null);
+  const [viewDoc, setViewDoc] = useState<CourtDocument | null>(null);
 
   const cases = useQuery<Case[]>({
     queryKey: ['cases', 'list', search, statusFilter],
@@ -227,6 +229,7 @@ export function FileCabinet() {
                     deleteDoc.mutate(id);
                 }}
                 onDocProvenance={(d) => exportProvenanceCertificate(d, selectedCase)}
+                onDocView={setViewDoc}
               />
             )}
           </div>
@@ -269,6 +272,13 @@ export function FileCabinet() {
           }}
         />
       )}
+      {viewDoc && (
+        <DocumentViewer
+          doc={viewDoc}
+          onClose={() => setViewDoc(null)}
+          onProvenance={() => exportProvenanceCertificate(viewDoc, selectedCase)}
+        />
+      )}
     </>
   );
 }
@@ -283,6 +293,7 @@ function CaseDetail({
   onDocEdit,
   onDocDelete,
   onDocProvenance,
+  onDocView,
 }: {
   caseRecord: Case;
   documents: CourtDocument[];
@@ -293,6 +304,7 @@ function CaseDetail({
   onDocEdit: (d: CourtDocument) => void;
   onDocDelete: (id: string) => void;
   onDocProvenance: (d: CourtDocument) => void;
+  onDocView: (d: CourtDocument) => void;
 }) {
   const c = caseRecord;
   return (
@@ -364,6 +376,9 @@ function CaseDetail({
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => onDocView(d)} title="View in CLAW">
+                    <Eye className="w-3.5 h-3.5" />
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -371,7 +386,7 @@ function CaseDetail({
                       const info: any = await api.documents.resolve(d.id);
                       if (info?.exists) await window.claw?.files.openItem(info.path);
                     }}
-                    title="Open file"
+                    title="Open with default Windows app"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                   </Button>

@@ -150,3 +150,99 @@ CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity_type, entity_id)
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_verifications_case ON verifications(case_id);
 CREATE INDEX IF NOT EXISTS idx_agent_messages_thread ON agent_messages(thread_id);
+
+-- ─── Full-text search (FTS5) ───
+-- Each FTS table mirrors the searchable columns of its source table.
+-- Triggers keep them in sync on INSERT / UPDATE / DELETE so we never serve
+-- stale results. The `rowid` column is the FTS5 join key and stores the
+-- source row's primary key (or rowid for tables with INTEGER PKs).
+
+CREATE VIRTUAL TABLE IF NOT EXISTS cases_fts USING fts5(
+  case_number, title, parties, description, content=''
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+  original_name, notes, content=''
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS generated_documents_fts USING fts5(
+  title, body, content=''
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS agent_messages_fts USING fts5(
+  content, content=''
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS audit_log_fts USING fts5(
+  action, entity_id, payload, actor_name, content=''
+);
+
+-- Cases triggers
+CREATE TRIGGER IF NOT EXISTS cases_ai AFTER INSERT ON cases BEGIN
+  INSERT INTO cases_fts(rowid, case_number, title, parties, description)
+  VALUES (new.oid, new.case_number, new.title,
+          coalesce(new.parties_appellant,'') || ' ' || coalesce(new.parties_respondent,''),
+          coalesce(new.description,''));
+END;
+CREATE TRIGGER IF NOT EXISTS cases_ad AFTER DELETE ON cases BEGIN
+  INSERT INTO cases_fts(cases_fts, rowid, case_number, title, parties, description)
+  VALUES ('delete', old.oid, old.case_number, old.title,
+          coalesce(old.parties_appellant,'') || ' ' || coalesce(old.parties_respondent,''),
+          coalesce(old.description,''));
+END;
+CREATE TRIGGER IF NOT EXISTS cases_au AFTER UPDATE ON cases BEGIN
+  INSERT INTO cases_fts(cases_fts, rowid, case_number, title, parties, description)
+  VALUES ('delete', old.oid, old.case_number, old.title,
+          coalesce(old.parties_appellant,'') || ' ' || coalesce(old.parties_respondent,''),
+          coalesce(old.description,''));
+  INSERT INTO cases_fts(rowid, case_number, title, parties, description)
+  VALUES (new.oid, new.case_number, new.title,
+          coalesce(new.parties_appellant,'') || ' ' || coalesce(new.parties_respondent,''),
+          coalesce(new.description,''));
+END;
+
+-- Documents triggers
+CREATE TRIGGER IF NOT EXISTS documents_ai AFTER INSERT ON documents BEGIN
+  INSERT INTO documents_fts(rowid, original_name, notes)
+  VALUES (new.oid, new.original_name, coalesce(new.notes,''));
+END;
+CREATE TRIGGER IF NOT EXISTS documents_ad AFTER DELETE ON documents BEGIN
+  INSERT INTO documents_fts(documents_fts, rowid, original_name, notes)
+  VALUES ('delete', old.oid, old.original_name, coalesce(old.notes,''));
+END;
+CREATE TRIGGER IF NOT EXISTS documents_au AFTER UPDATE ON documents BEGIN
+  INSERT INTO documents_fts(documents_fts, rowid, original_name, notes)
+  VALUES ('delete', old.oid, old.original_name, coalesce(old.notes,''));
+  INSERT INTO documents_fts(rowid, original_name, notes)
+  VALUES (new.oid, new.original_name, coalesce(new.notes,''));
+END;
+
+-- Generated documents triggers
+CREATE TRIGGER IF NOT EXISTS gen_ai AFTER INSERT ON generated_documents BEGIN
+  INSERT INTO generated_documents_fts(rowid, title, body)
+  VALUES (new.oid, new.title, new.content);
+END;
+CREATE TRIGGER IF NOT EXISTS gen_ad AFTER DELETE ON generated_documents BEGIN
+  INSERT INTO generated_documents_fts(generated_documents_fts, rowid, title, body)
+  VALUES ('delete', old.oid, old.title, old.content);
+END;
+CREATE TRIGGER IF NOT EXISTS gen_au AFTER UPDATE ON generated_documents BEGIN
+  INSERT INTO generated_documents_fts(generated_documents_fts, rowid, title, body)
+  VALUES ('delete', old.oid, old.title, old.content);
+  INSERT INTO generated_documents_fts(rowid, title, body)
+  VALUES (new.oid, new.title, new.content);
+END;
+
+-- Agent messages triggers (only user/assistant content; ignore system)
+CREATE TRIGGER IF NOT EXISTS agent_msg_ai AFTER INSERT ON agent_messages
+WHEN new.role IN ('user','assistant')
+BEGIN
+  INSERT INTO agent_messages_fts(rowid, content) VALUES (new.oid, new.content);
+END;
+CREATE TRIGGER IF NOT EXISTS agent_msg_ad AFTER DELETE ON agent_messages BEGIN
+  INSERT INTO agent_messages_fts(agent_messages_fts, rowid, content)
+  VALUES ('delete', old.oid, old.content);
+END;
+
+-- Audit triggers
+CREATE TRIGGER IF NOT EXISTS audit_ai AFTER INSERT ON audit_log BEGIN
+  INSERT INTO audit_log_fts(rowid, action, entity_id, payload, actor_name)
+  VALUES (new.id, new.action, new.entity_id, coalesce(new.payload,''), coalesce(new.actor_name,''));
+END;
+-- audit_log is append-only so no delete/update triggers

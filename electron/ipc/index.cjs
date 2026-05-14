@@ -8,6 +8,7 @@ const verification = require('./verification.cjs');
 const generator = require('./generator.cjs');
 const agent = require('./agent.cjs');
 const dashboard = require('./dashboard.cjs');
+const search = require('./search.cjs');
 
 const handlers = {
   ...cases,
@@ -20,6 +21,7 @@ const handlers = {
   ...generator,
   ...agent,
   ...dashboard,
+  ...search,
 };
 
 async function dispatch(channel, args) {
