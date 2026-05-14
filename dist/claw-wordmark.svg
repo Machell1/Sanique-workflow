@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" width="200" height="48">
+  <defs>
+    <linearGradient id="wmGold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#F59E0B"/>
+      <stop offset="100%" style="stop-color:#D4A843"/>
+    </linearGradient>
+  </defs>
+  <!-- CLAW in bold serif -->
+  <text x="4" y="28" font-family="Georgia, 'Playfair Display', serif" font-size="24" font-weight="700" fill="#F8FAFC" letter-spacing="2">CLAW</text>
+  <!-- Subtitle -->
+  <text x="4" y="42" font-family="Inter, system-ui, sans-serif" font-size="8" font-weight="400" fill="#4A4E63" letter-spacing="0.5">Commonwealth Legal Automation Workflow</text>
+</svg>
