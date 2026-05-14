@@ -12,8 +12,15 @@ const PATTERNS = [
   { type: 'jamaican_neutral', re: /\[\d{4}\]\s*JM(CA|SC|FC)\s+(Civ|Crim|App|Const)?\s*\d+/g },
   { type: 'uk_neutral', re: /\[\d{4}\]\s*(UKSC|UKHL|EWCA|EWHC)\s*(Civ|Crim|Admin|Comm)?\s*\d+/g },
   { type: 'caribbean_court', re: /\[\d{4}\]\s*CCJ\s+\d+\s*\(AJ\)/g },
-  { type: 'statute_section', re: /section\s+\d+[A-Za-z]?(?:\(\d+\))?\s+of\s+the\s+[A-Z][A-Za-z' ]+Act(?:,?\s*\d{4})?/g },
-  { type: 'generic_case', re: /\b[A-Z][A-Za-z'\-]+\s+v\.?\s+[A-Z][A-Za-z'\-]+(?:\s+\[\d{4}\])?/g },
+  // Statute sections. We accept "Act", "Constitution", "Charter", "Code",
+  // "Order", "Rules", or "Regulations" as the trailing instrument name —
+  // covering both ordinary statutes and the principal constitutional /
+  // delegated-legislation references the Court reads in practice.
+  { type: 'statute_section', re: /section\s+\d+[A-Za-z]?(?:\(\d+\))?\s+of\s+the\s+[A-Z][A-Za-z' ]+(?:Act|Constitution|Charter|Code|Order|Rules|Regulations)(?:,?\s*\d{4})?/g },
+  // Generic "X v Y" — the appellant party name can be a single letter
+  // (so "R v Brown" matches, which is by far the most common form for
+  // criminal authorities).
+  { type: 'generic_case', re: /\b[A-Z][A-Za-z'\-]*\s+v\.?\s+[A-Z][A-Za-z'\-]+(?:\s+\[\d{4}\])?/g },
 ];
 
 function parseCitations(text) {

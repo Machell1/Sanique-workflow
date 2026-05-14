@@ -1,7 +1,7 @@
 {
   "name": "claw-platform",
   "productName": "CLAW",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "CLAW - Commonwealth Legal Automation Workflow Platform. Court of Appeal, Jamaica.",
   "author": {
     "name": "Court of Appeal, Jamaica",
@@ -21,6 +21,7 @@
     "pack": "npm run build && electron-builder --dir",
     "prefetch:wincodesign": "python scripts/prefetch-wincodesign.py",
     "dist": "npm run prefetch:wincodesign && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win nsis --x64",
+    "qa": "cross-env ELECTRON_RUN_AS_NODE=1 \"%LOCALAPPDATA%\\Programs\\claw\\CLAW.exe\" scripts/qa-harness.cjs",
     "start": "electron electron/main.cjs"
   },
   "dependencies": {
