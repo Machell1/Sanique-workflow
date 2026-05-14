@@ -6,7 +6,7 @@ const { snapshot } = require('./versions.cjs');
 const TEMPLATES = {
   memo: {
     title: 'Internal Memorandum',
-    body: ({ caseRef, subject, author, body }) => `INTERNAL MEMORANDUM\n\nCOURT OF APPEAL, JAMAICA\n\nFROM:    ${author || '[Your name]'}\nTO:      [Recipient]\nDATE:    ${new Date().toLocaleDateString()}\nRE:      ${caseRef ? caseRef + ' — ' : ''}${subject || '[Subject]'}\n\n=======================================================================\n\n1. INTRODUCTION\n\n${body || '[State the question, the directions sought, and the urgency.]'}\n\n2. BACKGROUND\n\n[Summarise the procedural history and the parties’ positions.]\n\n3. ANALYSIS\n\n[Set out the relevant authorities and the reasoning. Where authorities are\ncited, ensure each is verified through CLAW Verification before the\nmemorandum is signed.]\n\n4. RECOMMENDATION\n\n[State your recommended course of action.]\n\n— ENDS —`,
+    body: ({ caseRef, subject, author, body }) => `INTERNAL MEMORANDUM\n\nFROM:    ${author || '[Your name]'}\nTO:      [Recipient]\nDATE:    ${new Date().toLocaleDateString()}\nRE:      ${caseRef ? caseRef + ' — ' : ''}${subject || '[Subject]'}\n\n=======================================================================\n\n1. INTRODUCTION\n\n${body || '[State the question, the directions sought, and the urgency.]'}\n\n2. BACKGROUND\n\n[Summarise the procedural history and the parties’ positions.]\n\n3. ANALYSIS\n\n[Set out the relevant authorities and the reasoning. Where authorities are\ncited, ensure each is verified through the Verification module before\nthe memorandum is signed.]\n\n4. RECOMMENDATION\n\n[State your recommended course of action.]\n\n— ENDS —`,
   },
   advice: {
     title: 'Counsel’s Written Advice',

@@ -1,7 +1,7 @@
 // Email export: write an RFC 822 .eml with the document attached as
 // base64, save to a temp path, and open it. Windows associates .eml
 // with the default mail client (Outlook by default), which opens a
-// pre-filled draft. CLAW never sees the recipient or the sent message.
+// pre-filled draft. The workspace never sees the recipient or the sent message.
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -10,7 +10,7 @@ const { get, getFilesDir } = require('../db/connection.cjs');
 const { appendAudit } = require('../services/audit.cjs');
 
 function buildEml({ to, cc, subject, body, attachmentName, attachmentMime, attachmentBase64 }) {
-  const boundary = '=_CLAW_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  const boundary = '=_WORKSPACE_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
   const date = new Date().toUTCString();
   const headers = [
     `Date: ${date}`,
@@ -59,7 +59,7 @@ async function exportDocumentEml({ documentId, to, cc, subject, body }, actor) {
   const eml = buildEml({
     to, cc,
     subject: subject || doc.original_name,
-    body: body || `Attached: ${doc.original_name}\nFiled: ${new Date(doc.uploaded_at).toLocaleString()}\nSHA-256: ${doc.sha256}\n\nSent from CLAW.`,
+    body: body || `Attached: ${doc.original_name}\nFiled: ${new Date(doc.uploaded_at).toLocaleString()}\nSHA-256: ${doc.sha256}\n\nSent from Sanique's workspace.`,
     attachmentName: doc.original_name,
     attachmentMime: doc.mime_type || 'application/octet-stream',
     attachmentBase64: bytes.toString('base64'),
@@ -95,7 +95,7 @@ async function exportGeneratedEml({ generatedDocumentId, to, cc, subject, body, 
   const eml = buildEml({
     to, cc,
     subject: subject || draft.title,
-    body: body || `Attached: ${draft.title}\nType: ${draft.doc_type}\nStatus: ${draft.status}\n\nSent from CLAW.`,
+    body: body || `Attached: ${draft.title}\nType: ${draft.doc_type}\nStatus: ${draft.status}\n\nSent from Sanique's workspace.`,
     attachmentName,
     attachmentMime,
     attachmentBase64,

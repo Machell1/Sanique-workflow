@@ -1,9 +1,9 @@
-# CLAW — User Manual
+# Sanique's workspace — User Manual
 
-**Commonwealth Legal Automation Workflow Platform**
-Court of Appeal, Jamaica · Version 2.6.0
+**Personal case-management workspace**
+Sanique Richards · Version 2.7.0
 
-This manual shows you how to do the day's work in CLAW. It is task-driven —
+This manual shows you how to do the day's work in the workspace. It is task-driven —
 look for the heading that matches what you need to do, follow the numbered
 steps, and skip anything that does not apply.
 
@@ -18,12 +18,12 @@ steps, and skip anything that does not apply.
 5. [Filing documents into a case](#5-filing-documents-into-a-case)
 6. [Drafting a memo, advice, judgment or order](#6-drafting-a-memo-advice-judgment-or-order)
 7. [Verifying citations before you rely on them](#7-verifying-citations-before-you-rely-on-them)
-8. [Asking KIMI CLAW for help](#8-asking-kimi-claw-for-help)
+8. [Asking the AI assistant for help](#8-asking-the-ai-assistant-for-help)
 9. [Running the pipeline — workflow board](#9-running-the-pipeline--workflow-board)
 10. [Audit ledger — proving nothing was tampered with](#10-audit-ledger--proving-nothing-was-tampered-with)
 11. [Reading documents in-app](#11-reading-documents-in-app)
 12. [Global search](#12-global-search)
-13. [Backing up and moving CLAW between machines](#13-backing-up-and-moving-claw-between-machines)
+13. [Backing up and moving the workspace between machines](#13-backing-up-and-moving-the-workspace-between-machines)
 14. [Troubleshooting](#14-troubleshooting)
 15. [Keyboard shortcuts and small conveniences](#15-keyboard-shortcuts-and-small-conveniences)
 
@@ -37,7 +37,7 @@ filing real work, do these four things in order.
 
 ### 1.1 Confirm who you are
 
-CLAW seeds itself with **S. Richards, KC** as the current user. If that is
+The workspace seeds itself with **S. Richards, KC** as the current user. If that is
 not you:
 
 1. Click **Settings** in the left rail (bottom group, gear icon).
@@ -51,11 +51,11 @@ make sure the right person is signed in. (For multi-user setups, see
 ### 1.2 Decide whether to enable AI
 
 1. Settings → **AI provider** tab.
-2. Pick **Anthropic Claude** (recommended) or **OpenAI**.
+2. Pick a provider — **Anthropic Claude**, **OpenAI**, **Google Gemini**, **Mistral**, **Ollama** (local), or any **OpenAI-compatible** endpoint (Groq, OpenRouter, LM Studio, vLLM, LocalAI, DeepSeek, Together, etc.).
 3. Paste a fresh API key. The key is stored locally and is never echoed
    back to the UI — only the last four characters show after saving.
 4. Optionally edit **Model** (defaults to `claude-sonnet-4-6`) and the
-   **System prompt** that KIMI CLAW reads before every conversation.
+   **System prompt** that the AI assistant reads before every conversation.
 5. **Save AI settings.**
 
 Leave the provider as **— Disabled —** if you do not want AI running. The
@@ -77,7 +77,7 @@ rest of the app works without it; only the Agent module is degraded.
 1. Settings → **Data location** tab.
 2. The path shown is where your SQLite database and the file vault live.
    On a typical Windows install this is
-   `C:\Users\<you>\AppData\Roaming\CLAW\claw-data\`.
+   `C:\Users\<you>\AppData\Roaming\Sanique's workspace\workspace-data\`.
 3. Click **Open in File Explorer** to confirm it exists.
 4. Add this folder to your backup routine (OneDrive, an external drive,
    whatever the registry uses). See *§11 Backing up*.
@@ -121,7 +121,7 @@ Now attach the founding documents:
 
 Every file you upload gets a SHA-256 hash computed as it is copied into
 the vault. The hash is stored alongside the file and written to the
-audit ledger. The original on your desktop is unchanged — CLAW works on
+audit ledger. The original on your desktop is unchanged — the workspace works on
 its own copy.
 
 Optionally, queue the first piece of work:
@@ -174,7 +174,7 @@ To inspect a single case:
 To open a document filed in the cabinet:
 
 8. In the **Documents in this folder** list, click the **eye** icon to
-   read the document **inside CLAW** (PDF, DOCX, images and text all
+   read the document **inside the workspace** (PDF, DOCX, images and text all
    render natively). Click the **arrow** icon if you want it to open
    in the default Windows app instead (Adobe Reader, Word, etc.). See
    *§11 Reading documents in-app* for what the in-app viewer can and
@@ -198,7 +198,7 @@ To remove a case (or a document):
 
 11. The trash-can icon next to the case title (top right of the detail
     panel) deletes the case **and every document filed under it**.
-    CLAW asks for confirmation; the deletion is recorded in the audit
+    The workspace asks for confirmation; the deletion is recorded in the audit
     ledger.
 
 To re-categorise or re-link a filed document (you filed an *Exhibit*
@@ -214,7 +214,7 @@ To produce a stand-alone **provenance certificate** for an uploaded
 document (e.g. to attach to a witness statement, or to lodge with the
 registry as proof of filing):
 
-13. Click the **shield** icon next to the document. CLAW saves a small
+13. Click the **shield** icon next to the document. The workspace saves a small
     `.provenance.txt` companion file containing the document ID,
     filename, MIME type, size, category, SHA-256, the upload timestamp
     and actor, the linked case, and the current audit-chain integrity
@@ -252,7 +252,7 @@ In the dialog:
 2. Pick a **Date**, **Start** and **End** time.
 3. Pick the **Type**: Hearing / Case management / Judgment delivery /
    Admin / Deadline. The colour on the calendar grid follows the type.
-4. **Linked case** — start typing the case number; CLAW links the
+4. **Linked case** — start typing the case number; the workspace links the
    event to the case file.
 5. **Term** and **Roster** — match the case.
 6. Optionally a **Description**.
@@ -270,7 +270,7 @@ The form opens pre-filled with the event's current values. Change what
 you need and click **Save changes**.
 
 To **delete** an event, use the trash-can icon next to it in the *All
-events this view* list. CLAW asks for confirmation. The deletion is
+events this view* list. The workspace asks for confirmation. The deletion is
 audited.
 
 ### 4.4 Read the dashboard "Upcoming" list
@@ -284,7 +284,7 @@ the calendar.
 
 This is the workflow you will use most often.
 
-### 5.1 What CLAW accepts
+### 5.1 What the workspace accepts
 
 The picker is pre-filtered to PDF, DOCX, DOC, XLSX, XLS, PPTX, PPT, TXT
 and RTF. You can switch the filter to **All files** in the picker if
@@ -296,24 +296,24 @@ EML).
 The Upload page is intentionally a single screen in three columns:
 
 1. **Pick files** — click the dashed box. Hold Ctrl in the picker to
-   select multiple files. CLAW remembers them until you confirm or
+   select multiple files. The workspace remembers them until you confirm or
    cancel.
 2. **Categorise** — every uploaded file shares the category and notes
    you set here. If you have two categories worth of files, do them in
    two batches.
-3. **Confirm filing** — the big gilt button. CLAW hashes each file,
+3. **Confirm filing** — the big gilt button. The workspace hashes each file,
    copies it into the vault, writes an audit entry, and clears the
    form. You will see a green *Filed* row appear under *Just uploaded*.
 
 ### 5.3 Best practice for naming
 
-CLAW keeps the original filename. Pick filenames the registry can read
+The workspace keeps the original filename. Pick filenames the registry can read
 six months from now:
 
 - Good: `2026-05-14_R_v_Henriques_Notice_of_Appeal.pdf`
 - Bad: `Scan_001.pdf`
 
-CLAW also keeps a SHA-256 hash. If you ever need to prove a document
+The workspace also keeps a SHA-256 hash. If you ever need to prove a document
 has not been tampered with, the hash on the audit entry must match the
 file in the vault.
 
@@ -337,7 +337,7 @@ formatted preview on the right.
 1. Sidebar → **Generator → New draft**.
 2. **Template** — pick one of the four.
 3. **Custom title** — optional. Leave blank to use the template title.
-4. **Linked case** — when you pick a case, CLAW autofills *Case
+4. **Linked case** — when you pick a case, the workspace autofills *Case
    reference*, *Parties (formatted)* and *Presiding bench* from the
    case file. Saves typing.
 5. The remaining fields are template-specific:
@@ -357,7 +357,7 @@ The draft opens with two panes side-by-side:
 
 - **Left:** the Markdown source (mono-typed textarea). Type freely.
 - **Right:** the live rendered preview, styled with the same typography
-  CLAW uses to display Word documents in-app.
+  The workspace uses to display Word documents in-app.
 
 Above the editor sits a toolbar with quick-insert buttons for the
 common formatting moves:
@@ -407,11 +407,11 @@ If **Settings → Compliance → Print provenance on exports** is on (the
 default), every Generator export carries a provenance block at the foot
 of the document, listing:
 
-- The application that produced it (`CLAW v2.3.0`).
+- The application that produced it (`Sanique's workspace v2.3.0`).
 - The Document ID (the database UUID).
 - The document type (memo / advice / judgment / order).
 - The current status (draft / reviewed / final).
-- The author name (the active CLAW user at the time of export).
+- The author name (the active the workspace user at the time of export).
 - The creation timestamp and the export timestamp.
 - The **SHA-256 of the body content** at the moment of export.
 
@@ -425,12 +425,12 @@ of the document, listing:
 
 What the seal proves, and what it does not:
 
-- It proves the document is **byte-for-byte identical to what CLAW
+- It proves the document is **byte-for-byte identical to what the workspace
   produced** at the timestamp in the block. To verify, re-hash the body
   text and compare against the value printed in the provenance block.
 - It is **invalidated by any edit made in a word processor** after the
   export. A document opened in Word, edited, and saved is no longer
-  what CLAW sealed. Re-export from CLAW after any change you want
+  what the workspace sealed. Re-export from the workspace after any change you want
   recorded in the audit chain.
 
 To suppress the provenance block (e.g. for outgoing copies where house
@@ -445,7 +445,7 @@ audit ledger — only the on-page footprint is omitted.
 - Where the template inserts `[bracketed placeholders]`, replace
   them — they are deliberately bracketed so you cannot ship a draft
   with `[APPELLANT]` still in it.
-- A signature line is the responsibility of the human author. CLAW
+- A signature line is the responsibility of the human author. the workspace
   does not affix any electronic seal.
 
 ---
@@ -464,7 +464,7 @@ scores them against the **AI Truth Harness**.
    that case file for future reference.
 4. **Run verification.**
 
-CLAW extracts every citation it recognises (Jamaican neutral citations,
+The workspace extracts every citation it recognises (Jamaican neutral citations,
 SCCA / COA App numbers, UK neutral citations, CCJ citations, statutory
 section references, and generic *X v. Y* patterns) and gives each a
 status:
@@ -532,9 +532,9 @@ addition.
 
 ---
 
-## 8. Asking KIMI CLAW for help
+## 8. Asking the AI assistant for help
 
-KIMI CLAW is the in-app chat agent. It uses whichever provider you
+the AI assistant is the in-app chat agent. It uses whichever provider you
 configured in *§1.2*. It is **not** a court reporter — anything it says
 is advisory until you have verified it (use *§7* to do exactly that).
 
@@ -552,15 +552,15 @@ is advisory until you have verified it (use *§7* to do exactly that).
 
 - Type your prompt in the textarea at the bottom and click the send
   arrow, or press **Ctrl+Enter**.
-- KIMI streams its reply into the conversation. While it is thinking,
-  the spinner shows *KIMI is thinking…*.
+- the AI assistant streams its reply into the conversation. While it is thinking,
+  the spinner shows *the AI assistant is thinking…*.
 - Each assistant message carries a confidence badge tied to the same
   Truth Harness as the Verification module.
 
-### 8.3 KIMI reads the case file when a thread is linked
+### 8.3 the AI assistant reads the case file when a thread is linked
 
 When you link a conversation to a case (in *§8.1 step 4*, or via the
-pencil → relink action in *§8.5*), KIMI receives a structured case
+pencil → relink action in *§8.5*), the AI assistant receives a structured case
 brief alongside every prompt: the case number, parties, presiding
 judge, term and roster; the list of every document filed under the
 case; any upcoming hearings; and, when your prompt is specific
@@ -569,17 +569,17 @@ what you asked.
 
 This means questions like *"summarise the appellant's grounds"* or
 *"what authorities are cited in the lower-court judgment?"* work
-without you pasting anything — KIMI already has the relevant text.
+without you pasting anything — the AI assistant already has the relevant text.
 
 Two caveats:
 
-- KIMI only sees documents that are **indexed** (see §11.5). Image-
+- the AI assistant only sees documents that are **indexed** (see §11.5). Image-
   only PDFs, encrypted PDFs, and very recent uploads still being
   indexed will not appear in its context.
 - The case brief is rebuilt fresh on every message so the model
   always sees the current state. Nothing is cached.
 
-### 8.4 What KIMI is good at
+### 8.4 What the AI assistant is good at
 
 - *"Summarise the procedural history below in two paragraphs."*
 - *"Distinguish R v. Brown from the Privy Council line on confessions."*
@@ -587,13 +587,13 @@ Two caveats:
 - *"What are the leading Jamaican authorities on construction of
   testamentary trust language?"*
 
-### 8.5 What KIMI is bad at
+### 8.5 What the AI assistant is bad at
 
 - Citing things that do not exist. Always run *§7 Verification* over
-  KIMI's output before you put it in a draft.
+  the assistant's output before you put it in a draft.
 - Maths and time-sensitive facts. Use a calculator and a current
   almanac.
-- Procedural directions specific to this Court. KIMI does not know the
+- Procedural directions specific to this Court. the AI assistant does not know the
   current Practice Direction unless you paste it into the chat.
 
 ### 8.6 Rename or relink a conversation
@@ -673,7 +673,7 @@ A registrar's morning loop:
 
 ## 10. Audit ledger — proving nothing was tampered with
 
-Every meaningful action in CLAW writes an entry to the audit log. Each
+Every meaningful action in The workspace writes an entry to the audit log. Each
 entry carries the SHA-256 hash of its own canonical material **and**
 the hash of the entry immediately before it. The first entry uses the
 literal string `GENESIS` as its predecessor. Modifying any historic
@@ -698,7 +698,7 @@ into external reporting.
 If the integrity check ever says **BROKEN**, do this immediately:
 
 1. Note the entry ID it reports as broken (`brokenAt`).
-2. **Do not** make any further changes in CLAW — every new entry will
+2. **Do not** make any further changes in The workspace — every new entry will
    chain to a corrupted predecessor and obscure the forensic trail.
 3. Copy the entire data folder (see *§11.1*) to a safe location.
 4. Open the SQL database in a read-only tool (DB Browser for SQLite is
@@ -723,7 +723,7 @@ namespaced like `case.create`, `document.upload`, `verification.run`.
 
 ## 11. Reading documents in-app
 
-From v2.4.0 you no longer need to leave CLAW to read a filed document.
+From v2.4.0 you no longer need to leave the workspace to read a filed document.
 Click the **eye** icon next to any document in the File Cabinet and a
 full-screen viewer opens.
 
@@ -741,7 +741,7 @@ full-screen viewer opens.
 - **Plain text** (.txt, .md, .csv, .json, .xml, .html) — shown as a
   scrollable monospace view.
 
-For anything CLAW does not recognise — `.xlsx`, `.pptx`, exotic CAD
+For anything The workspace does not recognise — `.xlsx`, `.pptx`, exotic CAD
 files, video, etc. — the viewer offers a one-click fallback to the
 default Windows app for that file type.
 
@@ -761,13 +761,13 @@ size, upload timestamp, and the first 14 characters of its
 
 It is **read-only**. There is no in-app highlighting, sticky notes, or
 mark-up — for those, open the file in Adobe Reader (PDF) or Word
-(DOCX) via the arrow-out icon. CLAW's audit ledger does not track
+(DOCX) via the arrow-out icon. the workspace's audit ledger does not track
 annotations made in external apps.
 
 ### 11.4 Re-verifying the seal
 
 The viewer header carries a **shield-with-question-mark** button. Click
-it and CLAW reads the file from disk, recomputes the SHA-256, and
+it and The workspace reads the file from disk, recomputes the SHA-256, and
 compares it against the seal recorded when the document was filed:
 
 - **`seal matches`** (green) — every byte is identical to the day it
@@ -777,11 +777,11 @@ compares it against the seal recorded when the document was filed:
   Look at the audit log for any `document.update` entries; the file
   itself should never be edited.
 - **`file missing`** — the vault entry has been deleted from disk
-  outside CLAW. Restore it from your backup.
+  outside the workspace. Restore it from your backup.
 
 ### 11.5 Searchable document content
 
-From v2.5.0 CLAW also extracts the text from every uploaded PDF and
+From v2.5.0 The workspace also extracts the text from every uploaded PDF and
 Word document so that the global search (see §12) can find phrases
 inside the body, not just the filename. Indexing happens:
 
@@ -804,13 +804,13 @@ A small badge in the viewer header tells you the state:
 ## 12. Global search
 
 The **Search** entry on the sidebar opens a single, fast search box
-that runs across every searchable piece of state CLAW holds:
+that runs across every searchable piece of state the workspace holds:
 
 - **Cases** — case number, title, parties, description.
 - **Documents** — original filename, notes.
 - **Generated drafts** — title and **the full body content** of every
   memo / advice / judgment / order.
-- **KIMI CLAW conversations** — every message (user and assistant).
+- **the AI assistant conversations** — every message (user and assistant).
 - **Audit ledger** — action, entity ID, payload, actor name.
 
 ### 12.1 How to use it
@@ -821,7 +821,7 @@ that runs across every searchable piece of state CLAW holds:
 2. Use quotes to require an exact phrase: `"section 24"` only matches
    that phrase, not `section` and `24` separately.
 3. Hits are grouped by kind. Click any row to jump to the module that
-   owns it; CLAW lands you on the right page (the Audit module for an
+   owns it; the workspace lands you on the right page (the Audit module for an
    audit hit, the File Cabinet for a case, and so on).
 4. The **Inside-document** group (only appears when there are hits)
    highlights the matched phrase inside the actual extracted body of a
@@ -831,7 +831,7 @@ that runs across every searchable piece of state CLAW holds:
 ### 12.2 What's indexed when
 
 The index is maintained by SQLite triggers, so every new case, every
-upload, every saved draft, every KIMI message and every audit entry
+upload, every saved draft, every the AI assistant message and every audit entry
 becomes searchable **immediately** — no batch job to wait for. The
 text inside an uploaded PDF or Word document is extracted in the
 background after upload (see §11.5); large files take a few seconds.
@@ -841,7 +841,7 @@ moment on large vaults.
 
 ### 12.3 What's *not* indexed
 
-- **Image-only PDFs and scanned documents.** CLAW does not perform OCR
+- **Image-only PDFs and scanned documents.** The workspace does not perform OCR
   yet. A PDF that is just photographs of pages produces no searchable
   text; the document is still viewable, just not searchable by body.
 - **Encrypted PDFs.** The text extractor cannot read inside a
@@ -852,17 +852,17 @@ moment on large vaults.
 
 ### 12.4 Keyboard shortcut
 
-Press **Ctrl+K** anywhere in CLAW to jump straight to the search page
+Press **Ctrl+K** anywhere in the workspace to jump straight to the search page
 with the cursor in the box.
 
-## 13. Backing up and moving CLAW between machines
+## 13. Backing up and moving the workspace between machines
 
-CLAW keeps everything in one folder. Back that folder up and you have
+The workspace keeps everything in one folder. Back that folder up and you have
 backed up the application.
 
 ### 13.1 Where it lives
 
-`C:\Users\<you>\AppData\Roaming\CLAW\claw-data\`
+`C:\Users\<you>\AppData\Roaming\Sanique's workspace\workspace-data\`
 
 Inside:
 
@@ -879,33 +879,33 @@ location → Open in File Explorer**.
 
 The simplest reliable plan:
 
-1. **Close CLAW** — quitting flushes the WAL into the main database.
+1. **Close the workspace** — quitting flushes the WAL into the main database.
 2. Copy `claw-data` into your usual backup (OneDrive, an external
    drive, an internal share).
-3. Re-open CLAW.
+3. Re-open the workspace.
 
 If you are willing to lose the last minute or two of work, you can
 skip the close step. SQLite WAL mode is crash-safe but a live copy may
 miss in-flight changes.
 
-### 13.3 Move CLAW to a new machine
+### 13.3 Move the workspace to a new machine
 
-1. Install CLAW on the new machine (download the same version of
-   `CLAW-Setup-x.y.z.exe` and run it).
-2. **Do not open CLAW yet.** The fresh install will seed sample data
+1. Install the workspace on the new machine (download the same version of
+   `Saniques-Workspace-Setup-x.y.z.exe` and run it).
+2. **Do not open the workspace yet.** The fresh install will seed sample data
    the first time you open it, and the seed will collide with any
    restored data.
-3. Replace `C:\Users\<new-you>\AppData\Roaming\CLAW\claw-data\` with
+3. Replace `C:\Users\<new-you>\AppData\Roaming\Sanique's workspace\workspace-data\` with
    the folder from your backup.
-4. Open CLAW. Your cases, documents, calendar, audit log — all of it
+4. Open the workspace. Your cases, documents, calendar, audit log — all of it
    should be there.
 
 ### 13.4 Multi-user on shared hardware
 
-CLAW is single-user per Windows account. Each user gets their own
-`%APPDATA%\CLAW\claw-data\` folder.
+The workspace is single-user per Windows account. Each user gets their own
+`%APPDATA%\the workspace\claw-data\` folder.
 
-Inside one CLAW install you can still have a **directory of multiple
+Inside one the workspace install you can still have a **directory of multiple
 users** (so that the audit log identifies who did what):
 
 1. **Settings → Users → Add user.**
@@ -923,9 +923,9 @@ not change which Windows account or which data folder is in use.
 
 ### 13.5 Uninstalling
 
-Settings → Apps → search for **CLAW v2.1.0** → **Uninstall**. By
+Settings → Apps → search for **Sanique's workspace v2.1.0** → **Uninstall**. By
 default the uninstaller leaves `claw-data` alone (your data survives).
-If you want a clean wipe, manually delete `%APPDATA%\CLAW\` after the
+If you want a clean wipe, manually delete `%APPDATA%\the workspace\` after the
 uninstaller finishes.
 
 ---
@@ -937,20 +937,20 @@ uninstaller finishes.
 The installer is unsigned. Windows shows *"Windows protected your PC"*.
 Click **More info → Run anyway**. This is a one-time prompt.
 
-### 14.2 CLAW opens to a black window and never paints
+### 14.2 the workspace opens to a black window and never paints
 
 Quit (Alt+F4), re-open. If it happens twice in a row, the renderer
 process is wedged. Most often this is a GPU driver issue:
 
-1. Quit CLAW.
-2. Edit `%APPDATA%\CLAW\command-line-flags.txt` (create it if it does
+1. Quit the workspace.
+2. Edit `%APPDATA%\the workspace\command-line-flags.txt` (create it if it does
    not exist) with the single line `--disable-gpu`.
 3. Re-open.
 
 ### 14.3 "Database is locked" toast
 
-Two CLAW windows are running at once, fighting over `claw.db`. Quit
-both. Open Task Manager and end any leftover `CLAW.exe` processes.
+Two the workspace windows are running at once, fighting over `claw.db`. Quit
+both. Open Task Manager and end any leftover `the workspace.exe` processes.
 Re-open once.
 
 ### 14.4 Citation parser missed an obvious citation
@@ -964,17 +964,17 @@ If you find a citation form that *should* be recognised, save the
 example — the parser regexes live in `electron/ipc/verification.cjs`
 and can be extended.
 
-### 14.5 KIMI CLAW says "AI provider is not configured"
+### 14.5 the AI assistant says "AI provider is not configured"
 
 Settings → AI provider → set provider → paste a fresh key → Save.
 Re-open the Agent. See *§1.2*.
 
-### 14.6 KIMI CLAW replies with a `[Provider error]`
+### 14.6 the AI assistant replies with a `[Provider error]`
 
 The HTTP call to Anthropic or OpenAI failed. Common causes:
 
 - Wrong key, or key revoked. Paste a fresh one in Settings.
-- Network blocked. CLAW does not use a proxy by default — check
+- Network blocked. The workspace does not use a proxy by default — check
   whether your firewall is blocking `api.anthropic.com` or
   `api.openai.com`.
 - Model name typo. Settings → AI provider → Model. Defaults are
@@ -987,7 +987,7 @@ supervisor has reviewed.
 
 ### 14.8 Uploaded a 2 GB scanned bundle, app got slow
 
-CLAW handles files up to a few hundred megabytes comfortably. For
+The workspace handles files up to a few hundred megabytes comfortably. For
 multi-gigabyte bundles, split into volumes and upload as separate
 documents under the same case (each gets its own hash). A future
 release will stream-hash so the app stays responsive on the very large
@@ -999,7 +999,7 @@ files.
 
 Court of Appeal work often calls for a single Record of Appeal made
 up of many separate PDFs in a particular order, with a cover page and
-a table of contents. From v2.6.0 CLAW does this inside the app.
+a table of contents. From v2.6.0 The workspace does this inside the app.
 
 1. **File Cabinet → pick the case → Bundles card → Assemble bundle.**
 2. The dialog lists every PDF filed under that case, with checkboxes
@@ -1007,7 +1007,7 @@ a table of contents. From v2.6.0 CLAW does this inside the app.
    put them in the right order.**
 3. Type a **bundle title** (defaults to *"Record of Appeal — &lt;case
    number&gt;"*) and optional notes.
-4. **Build bundle (N PDFs).** CLAW reads each source from the vault,
+4. **Build bundle (N PDFs).** The workspace reads each source from the vault,
    merges them with pdf-lib, prepends a cover page and a table of
    contents (each entry showing the source name, page range, and the
    source's SHA-256 fingerprint), and saves the merged PDF back into
@@ -1022,7 +1022,7 @@ cryptographically signed (see *§14d Electronic signatures*).
 
 ## 14b. Notes pinned to a document
 
-Annotation in CLAW is text-only and lives **alongside** the document
+Annotation in the workspace is text-only and lives **alongside** the document
 rather than being painted onto the PDF — so the underlying file's
 SHA-256 seal stays intact.
 
@@ -1044,7 +1044,7 @@ and appear in the audit ledger as `note.create` / `note.update` /
 ## 14c. Draft version history
 
 Every time you save a draft in the Generator (the gilt **Save changes**
-button), CLAW snapshots the full body. Only saves where the body
+button), the workspace snapshots the full body. Only saves where the body
 actually changed are snapshotted — rename-only and status-only edits
 are skipped so the history stays meaningful.
 
@@ -1062,7 +1062,7 @@ are skipped so the history stays meaningful.
 
 ## 14d. Electronic signatures
 
-CLAW signs documents with Ed25519. Each user gets a keypair, generated
+The workspace signs documents with Ed25519. Each user gets a keypair, generated
 the first time they sign anything; the private key never leaves their
 local AppData folder.
 
@@ -1080,13 +1080,13 @@ local AppData folder.
 2. Click the **pen-square** icon to open the signatures panel.
 3. Click **Sign**. Pick a **Capacity** (Counsel, Registrar, Judge of
    Appeal, etc. — defaults to your rank).
-4. **Sign.** CLAW combines the SHA-256, your name, your capacity, and
+4. **Sign.** the workspace combines the SHA-256, your name, your capacity, and
    the timestamp into a signing payload; signs it with your private
    key; and stores the signature + the public key alongside.
 
 ### Verifying a signature
 
-Each signature in the panel has a small shield icon. Click it and CLAW
+Each signature in the panel has a small shield icon. Click it and the workspace
 will:
 
 1. Re-derive the signing payload from the stored facts.
@@ -1107,13 +1107,13 @@ You'll see one of:
 
 Settings → Data location opens the folder. Inside `claw.db` the
 `user_keys` table holds your PEM-encoded private key. Back this folder
-up like any other CLAW data — losing it invalidates your ability to
+up like any other the workspace data — losing it invalidates your ability to
 sign as the same identity (verifications of past signatures still
 work, because the public key travels with the signature itself).
 
 ## 14e. Sending a document by email
 
-CLAW does not send email itself. It writes an `.eml` file with the
+The workspace does not send email itself. It writes an `.eml` file with the
 document attached (base64 in standard MIME multipart) and asks Windows
 to open it. Outlook (or whichever client is registered for `.eml`)
 opens a draft you can edit, address, and send.
@@ -1122,10 +1122,10 @@ opens a draft you can edit, address, and send.
 2. Click the **mail** icon.
 3. Fill in **To** / **Cc** / **Subject** / **Body** in the compose
    modal.
-4. **Open in mail client.** CLAW writes a temp `.eml`, launches it
+4. **Open in mail client.** The workspace writes a temp `.eml`, launches it
    with the OS handler, and the rest of the flow is in your mail
    client. The audit ledger records that an email export happened;
-   CLAW never sees the final message or its recipient.
+   the workspace never sees the final message or its recipient.
 
 If your machine has no default mail client registered, the dialog will
 report the OS error. The temp `.eml` path is logged in the audit entry
@@ -1133,10 +1133,10 @@ so you can still locate it manually.
 
 ## 15. Keyboard shortcuts and small conveniences
 
-- **Ctrl+K** anywhere in CLAW — jump to the global search page.
+- **Ctrl+K** anywhere in The workspace — jump to the global search page.
 - **Ctrl+B** / **Ctrl+I** in the Generator — bold or italic the
   selection.
-- **Ctrl+Enter** in any KIMI CLAW textarea — send the message.
+- **Ctrl+Enter** in any the AI assistant textarea — send the message.
 - **Esc** — closes any open dialog or the document viewer.
 - **Click a calendar event chip** — opens the edit form for that
   event with all fields pre-filled.
@@ -1145,7 +1145,7 @@ so you can still locate it manually.
 - **Search box on the File Cabinet** — filters by case number, title,
   appellant or respondent in real time.
 - **Sidebar → Search** — global full-text search across cases,
-  documents, drafts, KIMI conversations and the audit ledger.
+  documents, drafts, the AI assistant conversations and the audit ledger.
 - **Workflow card hover** — surfaces the advance / retreat / edit /
   block / delete actions.
 - **Sidebar collapse button** (top of the sidebar) — collapses the rail
@@ -1174,19 +1174,19 @@ so you can still locate it manually.
 | Issue a provenance certificate for an uploaded doc   | File Cabinet → document → shield icon       |
 | Score the citations in a passage                     | Verification → Run verification             |
 | Override a parser score / record a manual citation   | Verification → pencil / Add citation manually |
-| Chat with KIMI CLAW                                  | Agent → New conversation                    |
-| Rename / relink a KIMI conversation                  | Agent → open thread → pencil                |
+| Chat with the AI assistant                                  | Agent → New conversation                    |
+| Rename / relink a the AI assistant conversation                  | Agent → open thread → pencil                |
 | Confirm nothing has been tampered with               | Audit → integrity card                      |
 | Switch which user appears on the audit log           | Settings → Users → Switch                   |
 | Add or remove a user from the directory              | Settings → Users → Add user / bin           |
 | Change AI provider, compliance, data path            | Settings                                    |
-| Read a PDF or Word doc without leaving CLAW          | File Cabinet → document → eye icon          |
+| Read a PDF or Word doc without leaving the workspace          | File Cabinet → document → eye icon          |
 | Print a draft for the bench                          | Generator → open draft → printer icon       |
 | Format a draft (bold, lists, headings, quotations)   | Generator → toolbar, or type Markdown       |
-| Find a phrase across every case / draft / KIMI msg   | Sidebar → Search **or Ctrl+K**              |
+| Find a phrase across every case / draft / the AI assistant msg   | Sidebar → Search **or Ctrl+K**              |
 | Find a phrase **inside** a PDF or Word document      | Sidebar → Search (Inside-document hits)     |
 | Re-verify a document's SHA-256 seal in-app           | File Cabinet → eye → shield-? icon          |
-| Ask KIMI about a specific case's file                | Agent → link thread to case → ask           |
+| Ask the AI assistant about a specific case's file                | Agent → link thread to case → ask           |
 | **Assemble a Record of Appeal bundle (merge PDFs)**  | File Cabinet → case → Bundles → Assemble    |
 | **Annotate / pin a note to a document or page**      | File Cabinet → eye → notes icon → +         |
 | **Scroll back through every saved version of a draft** | Generator → open draft → history icon     |
@@ -1197,7 +1197,7 @@ so you can still locate it manually.
 
 ---
 
-**Court of Appeal, Jamaica · CLAW v2.6.0**
+**Sanique Richards · Sanique's workspace v2.6.0**
 For technical support, see *§14 Troubleshooting* first, then escalate
 to your system administrator. The source code and the change log live
 at <https://github.com/Machell1/Sanique-workflow>.

@@ -607,7 +607,7 @@ const actor = currentUser;
     await check('agent:send falls back to mock when no provider', async () => {
       const t = await agent['agent:send']({ threadId, content: 'What are the appeal grounds?', actor });
       const last = t.messages[t.messages.length - 1];
-      return last.role === 'assistant' && last.content.includes('AI provider is not configured');
+      return last.role === 'assistant' && last.content.includes('No AI provider is selected');
     });
     await check('agent:thread returns full history', () => {
       const t = agent['agent:thread']({ id: threadId });

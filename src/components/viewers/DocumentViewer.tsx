@@ -248,7 +248,7 @@ function UnsupportedPane({ doc }: { doc: CourtDocument }) {
     <Centered>
       <div className="text-center">
         <div className="text-sm text-obsidian-200 mb-2">
-          CLAW does not have an in-app viewer for {doc.mime_type || 'this file type'}.
+          No in-app viewer for {doc.mime_type || 'this file type'}.
         </div>
         <Button
           variant="gilt"

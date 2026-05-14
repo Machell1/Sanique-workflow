@@ -1,20 +1,17 @@
-; CLAW custom NSIS hooks
-; Brand the installer with Court of Appeal styling.
+; Custom NSIS hooks for Sanique's workspace.
 
 !macro customHeader
   RequestExecutionLevel user
 !macroend
 
 !macro customInstall
-  ; Register the application in the Windows registry for clean uninstall
-  WriteRegStr HKCU "Software\\CourtOfAppealJamaica\\CLAW" "InstallPath" "$INSTDIR"
-  WriteRegStr HKCU "Software\\CourtOfAppealJamaica\\CLAW" "Version" "${VERSION}"
+  WriteRegStr HKCU "Software\Sanique\Workspace" "InstallPath" "$INSTDIR"
+  WriteRegStr HKCU "Software\Sanique\Workspace" "Version" "${VERSION}"
 !macroend
 
 !macro customUnInstall
-  DeleteRegKey HKCU "Software\\CourtOfAppealJamaica\\CLAW"
+  DeleteRegKey HKCU "Software\Sanique\Workspace"
 !macroend
 
 !macro customWelcomePage
-  ; Default welcome page with our branding is fine
 !macroend

@@ -20,7 +20,7 @@ interface Props {
 }
 
 // We can only merge PDFs. Show only PDF-typed documents in the picker;
-// other formats can be exported to PDF outside CLAW and re-uploaded.
+// other formats can be exported to PDF outside the app and re-uploaded.
 function isPdf(d: CourtDocument) {
   const mime = (d.mime_type || '').toLowerCase();
   const name = d.original_name.toLowerCase();
@@ -238,9 +238,9 @@ export function BundleBuilder({ caseRecord, documents, onClose, onCreated }: Pro
               </ul>
             )}
             <p className="text-[11px] text-obsidian-400 mt-2">
-              CLAW prepends a cover page and a table of contents, then merges the selected PDFs in this order.
+              The workspace prepends a cover page and a table of contents, then merges the selected PDFs in this order.
               Each source file is opened read-only — the originals stay sealed in the vault with their own hashes
-              untouched. Non-PDF documents are not shown; export them to PDF outside CLAW and re-upload.
+              untouched. Non-PDF documents are not shown; export them to PDF outside the app and re-upload.
             </p>
           </div>
 
@@ -314,7 +314,7 @@ function drawCoverPage(
   }
 
   page.drawText(
-    'Assembled by CLAW. Original documents remain sealed in the vault. ' +
+    'Assembled by the workspace. Original documents remain sealed in the vault. ' +
       'This bundle is itself sealed with a SHA-256 hash.',
     { x: 72, y: 72, size: 9, font, color: rgb(0.4, 0.4, 0.4) }
   );

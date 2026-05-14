@@ -166,7 +166,7 @@ export function UploadPage() {
           <Card title="3. Confirm filing" subtitle="Each file is hashed before storage">
             <div className="text-xs text-obsidian-300 space-y-3 mb-4">
               <p>
-                When you confirm, CLAW computes a SHA-256 hash of every file and writes it to the audit ledger
+                When you confirm, the workspace computes a SHA-256 hash of every file and writes it to the audit ledger
                 along with the original filename, size, mime type, and the actor's identity.
               </p>
               <p>The original file is then copied into the local file vault. Nothing leaves the machine.</p>

@@ -3,7 +3,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
 
-const isDev = !!process.env.CLAW_DEV;
+const isDev = !!process.env.WORKSPACE_DEV || !!process.env.CLAW_DEV;
 
 let mainWindow = null;
 let dbConnection = null;
@@ -29,7 +29,7 @@ function createWindow() {
     minHeight: 720,
     show: false,
     backgroundColor: '#0A0A0F',
-    title: 'CLAW — Commonwealth Legal Automation Workflow',
+    title: "Sanique's workspace",
     icon: getIconPath(),
     webPreferences: {
       contextIsolation: true,
@@ -81,7 +81,7 @@ function buildMenu() {
           },
         },
         { type: 'separator' },
-        { role: 'quit', label: 'Quit CLAW' },
+        { role: 'quit', label: "Quit Sanique's workspace" },
       ],
     },
     {
@@ -101,13 +101,13 @@ function buildMenu() {
       label: 'Help',
       submenu: [
         {
-          label: 'About CLAW',
+          label: "About Sanique's workspace",
           click: () => {
             dialog.showMessageBox(mainWindow, {
               type: 'info',
-              title: 'About CLAW',
-              message: 'CLAW — Commonwealth Legal Automation Workflow',
-              detail: `Version ${app.getVersion()}\n\nCourt of Appeal, Jamaica\nCopyright (c) 2025`,
+              title: "About Sanique's workspace",
+              message: "Sanique's workspace",
+              detail: `Version ${app.getVersion()}\n\nCopyright (c) 2026 Sanique Richards`,
               buttons: ['OK'],
             });
           },

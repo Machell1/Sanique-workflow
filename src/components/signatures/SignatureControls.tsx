@@ -166,9 +166,9 @@ function SignModal({
         </Field>
         <div className="text-[11px] text-obsidian-400 space-y-1.5 surface p-3">
           <p>
-            CLAW will sign the document with your private Ed25519 key, stored locally for you. The signature
-            commits the document's SHA-256 hash, your name, your capacity, and the timestamp. The public
-            key travels with the signature so anyone with this CLAW install (or the standalone verifier) can
+            The workspace will sign the document with your private Ed25519 key, stored locally for you. The signature
+            commits the document&apos;s SHA-256 hash, your name, your capacity, and the timestamp. The public
+            key travels with the signature so anyone with this workspace install (or the standalone verifier) can
             confirm authenticity.
           </p>
           <p>

@@ -177,7 +177,9 @@ function runSeed(db) {
     'ai.provider': 'none',
     'ai.api_key': '',
     'ai.model': 'claude-sonnet-4-6',
-    'ai.system_prompt': 'You are KIMI CLAW, a legal research assistant for the Court of Appeal, Jamaica. Cite authorities. Flag uncertainty.',
+    'ai.base_url': '',
+    'ai.system_prompt':
+      'You are a research and drafting assistant. Be precise, cite authorities where appropriate, and flag uncertainty rather than guessing.',
     'compliance.confidence_floor': '0.98',
     'compliance.require_citation': 'true',
     'compliance.print_provenance': 'true',

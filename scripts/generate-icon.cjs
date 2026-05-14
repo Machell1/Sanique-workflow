@@ -1,6 +1,6 @@
 /**
  * Procedurally generates build/icon.ico — small, multi-size, no native deps.
- * Draws a stylized "C" (CLAW) on an obsidian background with a gilt accent.
+ * Draws a stylized seal (annular sector) on an obsidian background with a gilt accent.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -54,14 +54,26 @@ function drawIcon(size) {
         const t = r / (maxR * 0.94); // 0 at center → 1 at ring
         color = blend(BG_INNER, BG_OUTER, t);
 
-        // Stylized "C": annular sector facing right
-        // Inner radius 0.42, outer radius 0.66, gap on the right
-        const innerR = maxR * 0.42;
-        const outerR = maxR * 0.66;
-        const gapHalf = Math.PI / 5; // ~36deg gap on the right side
-        const inSector =
-          r >= innerR && r <= outerR && (angle > gapHalf || angle < -gapHalf);
-        if (inSector) {
+        // Stylised "S" monogram: two annular arcs stacked.
+        // Upper arc opens on the right; lower arc opens on the left,
+        // giving the silhouette of an "S" at icon scale.
+        const innerR = maxR * 0.18;
+        const outerR = maxR * 0.36;
+        const gap = Math.PI / 4; // 45deg gap on each arc's open side
+        // Upper arc centred at (0, -0.32*maxR)
+        const upDx = dx;
+        const upDy = dy + maxR * 0.32;
+        const upR = Math.sqrt(upDx * upDx + upDy * upDy);
+        const upAng = Math.atan2(upDy, upDx);
+        if (upR >= innerR && upR <= outerR && upAng < -gap) {
+          color = LETTER;
+        }
+        // Lower arc centred at (0, +0.32*maxR), gap on the left
+        const dnDx = dx;
+        const dnDy = dy - maxR * 0.32;
+        const dnR = Math.sqrt(dnDx * dnDx + dnDy * dnDy);
+        const dnAng = Math.atan2(dnDy, dnDx);
+        if (dnR >= innerR && dnR <= outerR && dnAng > -Math.PI + gap && dnAng < Math.PI - gap) {
           color = LETTER;
         }
       }

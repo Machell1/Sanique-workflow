@@ -48,7 +48,7 @@ export function EmailComposeModal({ onClose, target }: Props) {
       open
       onClose={onClose}
       title="Send by email"
-      description="CLAW writes an .eml file and opens it in your default mail client — recipient and send action are yours."
+      description="The workspace writes an .eml file and opens it in your default mail client — recipient and send action are yours."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -76,7 +76,7 @@ export function EmailComposeModal({ onClose, target }: Props) {
         </Field>
         {err && <div className="text-sm text-truth-blocked surface p-2 border-truth-blocked/30">{err}</div>}
         <p className="text-[11px] text-obsidian-400">
-          The document is attached automatically. CLAW does not see your final draft or who you send it to —
+          The document is attached automatically. This workspace doesn&apos;t see your final draft or who you send it to —
           your mail client owns the rest of the flow.
         </p>
       </div>

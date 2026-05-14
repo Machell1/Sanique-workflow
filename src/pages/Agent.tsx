@@ -98,8 +98,8 @@ export function Agent() {
   return (
     <>
       <PageHeader
-        title="Agent — KIMI CLAW"
-        subtitle="AI legal assistant · grounded in your case file"
+        title="Agent"
+        subtitle="AI assistant · grounded in your case file"
         actions={
           <>
             {provider === 'none' || !apiKeySet ? (
@@ -160,7 +160,7 @@ export function Agent() {
               <EmptyState
                 illustration="/empty-state-agent.svg"
                 title="Pick a conversation or start a new one"
-                description="KIMI CLAW will help research authorities, summarise transcripts, and draft outline submissions. Always verify any citation before relying on it."
+                description="The assistant will help research authorities, summarise transcripts, and draft outline submissions. Always verify any citation before relying on it."
                 action={
                   <Button variant="gilt" onClick={() => setCreateOpen(true)}>
                     <Plus className="w-4 h-4" /> New conversation
@@ -238,7 +238,7 @@ export function Agent() {
                         <Bot className="w-3.5 h-3.5 text-gilt-300" />
                       </div>
                       <div className="bg-obsidian-800/80 border border-white/5 rounded-lg px-4 py-3 inline-flex items-center gap-2 text-sm text-obsidian-300">
-                        <Spinner /> KIMI is thinking…
+                        <Spinner /> Thinking…
                       </div>
                     </div>
                   )}
@@ -249,7 +249,7 @@ export function Agent() {
                     <Textarea
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
-                      placeholder="Ask KIMI CLAW about authorities, draft a section, summarise transcripts…"
+                      placeholder="Ask about authorities, draft a section, summarise transcripts…"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitMessage(e as any);
                       }}
@@ -260,7 +260,7 @@ export function Agent() {
                     </Button>
                   </div>
                   <div className="text-[10px] text-obsidian-400 mt-2">
-                    Press Ctrl+Enter to send. KIMI's output is advisory; verify all citations.
+                    Press Ctrl+Enter to send. The assistant&apos;s output is advisory; verify all citations.
                   </div>
                 </form>
               </>

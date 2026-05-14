@@ -45,8 +45,8 @@ export function Sidebar() {
         <img src="/claw-logo.svg" alt="" className="w-8 h-8 shrink-0" />
         {!sidebarCollapsed && (
           <div className="flex flex-col">
-            <span className="font-serif text-lg leading-none text-gilt-300">CLAW</span>
-            <span className="text-[10px] uppercase tracking-wider text-obsidian-300">Court of Appeal</span>
+            <span className="font-serif text-lg leading-none text-gilt-300">Sanique&apos;s</span>
+            <span className="text-[10px] uppercase tracking-wider text-obsidian-300">workspace</span>
           </div>
         )}
       </div>

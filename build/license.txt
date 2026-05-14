@@ -1,26 +1,24 @@
-CLAW — Commonwealth Legal Automation Workflow Platform
-Court of Appeal, Jamaica
-Copyright (c) 2025 Court of Appeal, Jamaica. All rights reserved.
+Sanique's workspace
+Copyright (c) 2026 Sanique Richards. All rights reserved.
 
 LICENSE TERMS
 
-This software ("CLAW") is provided to authorized personnel of the Court
-of Appeal, Jamaica and other duly licensed users for the purpose of
-managing court operations, preparing legal documents, and maintaining
-case records.
+This software ("Sanique's workspace") is provided for personal and
+professional use by Sanique Richards and other duly licensed users for
+the purpose of managing case work, preparing documents, and maintaining
+records.
 
 By installing this software you agree to the following:
 
 1. AUTHORIZED USE
-   The software is licensed for use by judicial officers, registry
-   staff, counsel, and other authorized users. Unauthorized
+   The software is licensed for use by the named licensee. Unauthorized
    installation or use is prohibited.
 
 2. CONFIDENTIALITY
    Information processed by this software may include privileged
    communications and case records subject to confidentiality
-   obligations. Users must comply with all applicable rules of court,
-   data protection law, and professional conduct rules.
+   obligations. Users must comply with all applicable rules, data
+   protection law, and professional conduct rules.
 
 3. AUDIT TRAIL
    The software maintains an immutable, cryptographically chained
@@ -29,18 +27,20 @@ By installing this software you agree to the following:
 
 4. NO WARRANTY
    The software is provided "AS IS" without warranty of any kind,
-   express or implied. The Court of Appeal, Jamaica disclaims all
-   warranties to the maximum extent permitted by law.
+   express or implied. The licensor disclaims all warranties to the
+   maximum extent permitted by law.
 
 5. LIMITATION OF LIABILITY
-   To the maximum extent permitted by law, the Court of Appeal,
-   Jamaica shall not be liable for any damages arising out of the
-   use or inability to use the software.
+   To the maximum extent permitted by law, the licensor shall not be
+   liable for any damages arising out of the use or inability to use
+   the software.
 
 6. AI ASSISTANCE
    AI-generated suggestions, drafts, citations, and verifications
-   are advisory only and must be verified by a qualified legal
-   professional before being relied upon.
+   are advisory only and must be verified by a qualified professional
+   before being relied upon. The software supports multiple AI
+   providers; users supply their own API credentials and bear sole
+   responsibility for terms agreed with those providers.
 
 By clicking "I Agree" you confirm that you are an authorized user
 and that you accept these terms.

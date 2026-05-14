@@ -87,30 +87,53 @@ async function callProvider(messages) {
   const provider = getSetting('ai.provider');
   const apiKey = getSetting('ai.api_key');
   const model = getSetting('ai.model') || 'claude-sonnet-4-6';
+  const baseUrl = getSetting('ai.base_url');
 
-  if (!provider || provider === 'none' || !apiKey) {
+  if (!provider || provider === 'none') {
     return {
       content:
-        'AI provider is not configured. Open Settings → Integrations and add an API key for Anthropic or OpenAI to enable KIMI CLAW.\n\nWithout a provider configured, KIMI CLAW will only echo your prompt and run heuristic citation checks.',
+        'No AI provider is selected. Open Settings → AI provider and pick one (Anthropic, OpenAI, Google Gemini, Mistral, Ollama, or any OpenAI-compatible endpoint) to enable the assistant.\n\nWith no provider configured, the assistant only echoes your prompt; the rest of the workspace (search, drafting, verification, etc.) works normally.',
       confidence: null,
       citations: [],
       mocked: true,
     };
   }
 
-  if (provider === 'anthropic') {
-    return callAnthropic(apiKey, model, messages);
+  // Ollama is the only provider that runs locally and doesn't need a key.
+  if (provider !== 'ollama' && !apiKey) {
+    return {
+      content:
+        `Provider "${provider}" is selected but no API key is set. Open Settings → AI provider and paste a fresh key.`,
+      confidence: null,
+      citations: [],
+      mocked: true,
+    };
   }
-  if (provider === 'openai') {
-    return callOpenAI(apiKey, model, messages);
+
+  try {
+    switch (provider) {
+      case 'anthropic':   return await callAnthropic(apiKey, model, messages, baseUrl);
+      case 'openai':      return await callOpenAI(apiKey, model, messages, baseUrl || 'https://api.openai.com/v1');
+      case 'mistral':     return await callOpenAI(apiKey, model, messages, baseUrl || 'https://api.mistral.ai/v1');
+      case 'google':      return await callGemini(apiKey, model, messages, baseUrl);
+      case 'ollama':      return await callOllama(model, messages, baseUrl || 'http://localhost:11434');
+      case 'openai-compatible':
+      case 'custom':
+        if (!baseUrl) throw new Error('Custom provider requires a Base URL in Settings.');
+        return await callOpenAI(apiKey, model, messages, baseUrl);
+      default:
+        return { content: `Unknown provider: ${provider}`, confidence: null, citations: [], mocked: true };
+    }
+  } catch (err) {
+    return { content: `[Provider error] ${err.message}`, confidence: null, citations: [], mocked: false };
   }
-  return { content: `Unknown provider: ${provider}`, confidence: null, citations: [], mocked: true };
 }
 
-async function callAnthropic(apiKey, model, messages) {
+async function callAnthropic(apiKey, model, messages, baseUrl) {
   const sys = messages.find((m) => m.role === 'system')?.content || '';
   const filtered = messages.filter((m) => m.role !== 'system');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const url = (baseUrl || 'https://api.anthropic.com').replace(/\/$/, '') + '/v1/messages';
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -133,8 +156,12 @@ async function callAnthropic(apiKey, model, messages) {
   return { content: text, confidence: 0.99, citations: [], mocked: false };
 }
 
-async function callOpenAI(apiKey, model, messages) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+async function callOpenAI(apiKey, model, messages, baseUrl) {
+  // Works for OpenAI, Mistral, vLLM, LocalAI, LM Studio, OpenRouter,
+  // Together, Groq, DeepSeek — anything that speaks the OpenAI
+  // /chat/completions schema.
+  const url = baseUrl.replace(/\/$/, '') + '/chat/completions';
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -148,11 +175,65 @@ async function callOpenAI(apiKey, model, messages) {
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenAI API error ${res.status}: ${err}`);
+    throw new Error(`API error ${res.status}: ${err}`);
   }
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || '';
   return { content: text, confidence: 0.99, citations: [], mocked: false };
+}
+
+async function callGemini(apiKey, model, messages, baseUrl) {
+  // Gemini's request format differs: separate `systemInstruction`,
+  // `contents` array with `role: user|model` and `parts: [{text}]`.
+  const sysContent = messages.find((m) => m.role === 'system')?.content || '';
+  const turns = messages.filter((m) => m.role !== 'system');
+  const contents = turns.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+  const root = (baseUrl || 'https://generativelanguage.googleapis.com').replace(/\/$/, '');
+  const url = `${root}/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const body = {
+    systemInstruction: sysContent ? { parts: [{ text: sysContent }] } : undefined,
+    contents,
+    generationConfig: { maxOutputTokens: 2048 },
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini API error ${res.status}: ${err}`);
+  }
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts || [])
+    .map((p) => p.text || '')
+    .filter(Boolean)
+    .join('\n');
+  return { content: text, confidence: 0.99, citations: [], mocked: false };
+}
+
+async function callOllama(model, messages, baseUrl) {
+  // Local-only — no API key. Connects to a running Ollama server (the
+  // default `ollama serve` listens on 127.0.0.1:11434).
+  const url = baseUrl.replace(/\/$/, '') + '/api/chat';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      stream: false,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Ollama error ${res.status}: ${err} (is "ollama serve" running?)`);
+  }
+  const data = await res.json();
+  return { content: data.message?.content || '', confidence: 0.95, citations: [], mocked: false };
 }
 
 function buildCaseContext(caseId, userQuery) {
@@ -262,7 +343,9 @@ async function sendMessage({ threadId, content }, actor) {
     .prepare('SELECT role, content FROM agent_messages WHERE thread_id = ? ORDER BY created_at ASC')
     .all(threadId);
 
-  const basePrompt = getSetting('ai.system_prompt') || 'You are KIMI CLAW, a legal research assistant.';
+  const basePrompt =
+    getSetting('ai.system_prompt') ||
+    'You are a research and drafting assistant. Be precise, cite authorities where appropriate, and flag uncertainty rather than guessing.';
   const caseContext = buildCaseContext(thread.case_id, content);
   const sysPrompt = caseContext ? `${basePrompt}\n${caseContext}` : basePrompt;
   const messages = [{ role: 'system', content: sysPrompt }, ...history];

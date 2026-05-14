@@ -93,7 +93,7 @@ export function FileCabinet() {
     const audit: any = await api.audit.verify();
     const filename = `${d.original_name.replace(/[^a-z0-9]+/gi, '_')}.provenance.txt`;
     const lines = [
-      'CLAW — DOCUMENT PROVENANCE CERTIFICATE',
+      "SANIQUE'S WORKSPACE — DOCUMENT PROVENANCE CERTIFICATE",
       '======================================',
       '',
       `Generated at      ${new Date().toISOString()}`,
@@ -121,15 +121,15 @@ export function FileCabinet() {
       '',
       'HOW TO VERIFY',
       '-------------',
-      'Re-hash the file in the CLAW vault and compare against the SHA-256',
+      'Re-hash the file in the workspace vault and compare against the SHA-256',
       'above. The hashes must match exactly. To prove the audit log has',
-      'not been tampered with, open the Audit module in CLAW and confirm',
+      'not been tampered with, open the Audit module and confirm',
       '"INTACT" is displayed.',
       '',
       'NOTES',
       '-----',
       'This certificate is informational. It does not contain the document',
-      'content. It proves only that, at the time of generation, CLAW held a',
+      'content. It proves only that, at the time of generation, the workspace held a',
       'file with the recorded hash and chain-of-custody metadata.',
     ];
     saveAs(new Blob([lines.join('\n')], { type: 'text/plain' }), filename);
@@ -474,7 +474,7 @@ function CaseDetail({
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => onDocView(d)} title="View in CLAW">
+                  <Button size="sm" variant="ghost" onClick={() => onDocView(d)} title="View in app">
                     <Eye className="w-3.5 h-3.5" />
                   </Button>
                   <Button

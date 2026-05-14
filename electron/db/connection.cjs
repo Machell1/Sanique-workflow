@@ -6,10 +6,43 @@ let db = null;
 let dataDir = null;
 
 function init(userDataPath) {
-  dataDir = path.join(userDataPath, 'claw-data');
+  dataDir = path.join(userDataPath, 'workspace-data');
+  // Migrate from prior installs (CLAW → Sanique's workspace).
+  // The previous app saved its data at %APPDATA%\CLAW\claw-data\.
+  // electron sets userDataPath based on productName, so by the time we are
+  // called, it is %APPDATA%\Sanique's workspace. Sibling directory lookup
+  // finds the old folder and we copy it once.
+  const parent = path.dirname(userDataPath);
+  const legacyDataDir = path.join(parent, 'CLAW', 'claw-data');
+  if (fs.existsSync(legacyDataDir) && !fs.existsSync(dataDir)) {
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      fs.cpSync(legacyDataDir, dataDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dataDir, '.migrated-from-claw'),
+        new Date().toISOString() + '\nMigrated from ' + legacyDataDir + '\n'
+      );
+    } catch (e) {
+      console.error('[migration] CLAW → workspace failed:', e);
+    }
+  }
+  // Also handle the older naming where data lived at /claw-data under the
+  // current userData (i.e. if someone manually renamed the parent folder).
+  const olderDataDir = path.join(userDataPath, 'claw-data');
+  if (fs.existsSync(olderDataDir) && !fs.existsSync(dataDir)) {
+    try {
+      fs.renameSync(olderDataDir, dataDir);
+    } catch (e) {
+      console.error('[migration] in-place rename failed:', e);
+    }
+  }
+
   fs.mkdirSync(dataDir, { recursive: true });
   fs.mkdirSync(path.join(dataDir, 'files'), { recursive: true });
 
+  // Keep the database filename stable (claw.db) so migrating from old
+  // installs is a copy not a rename — the file lands in the new
+  // workspace-data folder and is picked up here.
   const dbPath = path.join(dataDir, 'claw.db');
   db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
@@ -95,6 +128,7 @@ function backfillFts(db) {
 function backfillDefaultSettings(db) {
   const defaults = {
     'compliance.print_provenance': 'true',
+    'ai.base_url': '',
   };
   const now = Date.now();
   for (const [k, v] of Object.entries(defaults)) {

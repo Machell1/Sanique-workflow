@@ -1,4 +1,4 @@
--- CLAW SQLite schema
+-- Sanique's workspace — SQLite schema
 -- All timestamps are stored as Unix milliseconds (INTEGER).
 
 PRAGMA foreign_keys = ON;
@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS draft_versions (
 CREATE INDEX IF NOT EXISTS idx_draft_versions ON draft_versions(draft_id, version_no);
 
 -- Text notes the user pins to a document (whole-doc or per-page).
--- These are CLAW's first-pass annotation system; not a paint-on-PDF
+-- First-pass annotation system; not a paint-on-PDF
 -- replacement, but a structured way to record observations without
 -- modifying the underlying file (which would break its SHA-256 seal).
 CREATE TABLE IF NOT EXISTS document_notes (

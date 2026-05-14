@@ -155,7 +155,7 @@ export function Generator() {
                   alignment: AlignmentType.CENTER,
                   children: [
                     new TextRun({
-                      text: `CLAW · ${shortHash(hash, 12)} · ${new Date(facts.exportedAt).toISOString().slice(0, 10)} · `,
+                      text: `Workspace · ${shortHash(hash, 12)} · ${new Date(facts.exportedAt).toISOString().slice(0, 10)} · `,
                       size: 16,
                       color: '8A8A8A',
                     }),
@@ -174,9 +174,9 @@ export function Generator() {
     ];
 
     const doc = new Document({
-      creator: `CLAW v${appVersion} (${facts.authorName})`,
+      creator: `Sanique's workspace v${appVersion} (${facts.authorName})`,
       title: d.title,
-      description: `CLAW-generated ${d.doc_type} · sha256 ${hash}`,
+      description: `Workspace-generated ${d.doc_type} · sha256 ${hash}`,
       subject: `Document ID: ${d.id}`,
       lastModifiedBy: facts.authorName,
       sections,
@@ -494,7 +494,7 @@ function DraftEditor({
         <article className="claw-doc" dangerouslySetInnerHTML={{ __html: previewHtml }} />
         {provenanceWillStamp && (
           <p className="mt-8 text-[10px] text-stone-500 font-mono">
-            CLAW v{useAppStore.getState().appVersion || '2.4.0'} · Document ID {draft.id} · printed {new Date().toISOString()}
+            Sanique&apos;s workspace v{useAppStore.getState().appVersion || '2.7.0'} · Document ID {draft.id} · printed {new Date().toISOString()}
           </p>
         )}
       </div>

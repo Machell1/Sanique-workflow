@@ -3,7 +3,7 @@ import type { IpcResult } from './types';
 // Browser fallback — used when the app is opened in a regular browser preview
 // (no Electron preload available). Keeps the UI demo-able without the desktop runtime.
 const browserMockMessage =
-  'This action requires the CLAW desktop application. Open the installed app to use this feature.';
+  "This action requires Sanique's workspace desktop app. Open the installed app to use this feature.";
 
 function isElectron() {
   return typeof window !== 'undefined' && !!window.claw;

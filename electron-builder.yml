@@ -1,6 +1,6 @@
-appId: jm.gov.coa.claw
-productName: CLAW
-copyright: Copyright (c) 2025 Court of Appeal, Jamaica
+appId: dev.sanique.workspace
+productName: Sanique's workspace
+copyright: Copyright (c) 2026 Sanique Richards
 
 directories:
   output: release
@@ -30,8 +30,8 @@ win:
       arch:
         - x64
   icon: build/icon.ico
-  artifactName: "CLAW-Setup-${version}.${ext}"
-  publisherName: "Court of Appeal, Jamaica"
+  artifactName: "Saniques-Workspace-Setup-${version}.${ext}"
+  publisherName: "Sanique Richards"
   requestedExecutionLevel: asInvoker
 
 nsis:
@@ -40,14 +40,14 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: CLAW
+  shortcutName: Sanique's workspace
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
   deleteAppDataOnUninstall: false
   runAfterFinish: true
-  artifactName: "CLAW-Setup-${version}.${ext}"
-  uninstallDisplayName: "CLAW v${version}"
+  artifactName: "Saniques-Workspace-Setup-${version}.${ext}"
+  uninstallDisplayName: "Sanique's workspace v${version}"
   license: build/license.txt
   include: build/installer.nsh
 

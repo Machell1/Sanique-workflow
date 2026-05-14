@@ -24,7 +24,7 @@ const KIND_META: Record<SearchHit['kind'], { label: string; icon: React.ReactNod
   document: { label: 'Document', icon: <FileText className="w-3.5 h-3.5" />, tone: 'info' },
   document_content: { label: 'Inside document', icon: <FileSearch className="w-3.5 h-3.5" />, tone: 'escalation' },
   generated: { label: 'Draft', icon: <FileBadge className="w-3.5 h-3.5" />, tone: 'verified' },
-  agent_message: { label: 'KIMI', icon: <Bot className="w-3.5 h-3.5" />, tone: 'high' },
+  agent_message: { label: 'AI chat', icon: <Bot className="w-3.5 h-3.5" />, tone: 'high' },
   audit: { label: 'Audit', icon: <History className="w-3.5 h-3.5" />, tone: 'neutral' },
 };
 
@@ -73,7 +73,7 @@ export function GlobalSearch() {
     <>
       <PageHeader
         title="Search"
-        subtitle="Across cases, documents, drafts, KIMI conversations, and the audit ledger"
+        subtitle="Across cases, documents, drafts, AI conversations, and the audit ledger"
       />
       <PageBody className="space-y-5">
         <Card>
@@ -101,7 +101,7 @@ export function GlobalSearch() {
           <EmptyState
             illustration="/empty-state-audit.svg"
             title="Start typing"
-            description="Search runs across every case number, title, party name, document filename, every word inside generated drafts, every KIMI CLAW message, and every audit entry."
+            description="Search runs across every case number, title, party name, document filename, every word inside generated drafts, every AI conversation message, and every audit entry."
           />
         )}
 

@@ -120,6 +120,28 @@ function TabButton({ active, onClick, icon, children }: { active: boolean; onCli
   );
 }
 
+interface ProviderDef {
+  value: string;
+  label: string;
+  modelPlaceholder: string;
+  defaultModel?: string;
+  defaultBaseUrl?: string;
+  needsApiKey: boolean;
+  needsBaseUrl: boolean;
+  baseUrlHint?: string;
+  helpUrl?: string;
+}
+
+const PROVIDERS: ProviderDef[] = [
+  { value: 'none', label: '— Disabled —', modelPlaceholder: '', needsApiKey: false, needsBaseUrl: false },
+  { value: 'anthropic', label: 'Anthropic Claude', modelPlaceholder: 'claude-sonnet-4-6', needsApiKey: true, needsBaseUrl: false, helpUrl: 'https://console.anthropic.com/settings/keys' },
+  { value: 'openai', label: 'OpenAI', modelPlaceholder: 'gpt-4o', needsApiKey: true, needsBaseUrl: false, helpUrl: 'https://platform.openai.com/api-keys' },
+  { value: 'google', label: 'Google Gemini', modelPlaceholder: 'gemini-1.5-pro', needsApiKey: true, needsBaseUrl: false, helpUrl: 'https://aistudio.google.com/app/apikey' },
+  { value: 'mistral', label: 'Mistral', modelPlaceholder: 'mistral-large-latest', needsApiKey: true, needsBaseUrl: false, helpUrl: 'https://console.mistral.ai/api-keys/' },
+  { value: 'ollama', label: 'Ollama (local)', modelPlaceholder: 'llama3.1', defaultBaseUrl: 'http://localhost:11434', needsApiKey: false, needsBaseUrl: true, baseUrlHint: 'URL of your running `ollama serve` (default localhost:11434)' },
+  { value: 'openai-compatible', label: 'OpenAI-compatible (Groq, OpenRouter, LM Studio, vLLM…)', modelPlaceholder: 'meta-llama/llama-3.1-70b-instruct', needsApiKey: true, needsBaseUrl: true, baseUrlHint: 'Base URL ending in /v1 (e.g. https://api.groq.com/openai/v1)' },
+];
+
 function AIPanel({
   getValue,
   isMasked,
@@ -133,19 +155,30 @@ function AIPanel({
 }) {
   const [provider, setProvider] = useState(getValue('ai.provider') || 'none');
   const [model, setModel] = useState(getValue('ai.model'));
+  const [baseUrl, setBaseUrl] = useState(getValue('ai.base_url'));
   const [systemPrompt, setSystemPrompt] = useState(getValue('ai.system_prompt'));
   const [apiKey, setApiKey] = useState('');
 
   useEffect(() => {
     setProvider(getValue('ai.provider') || 'none');
     setModel(getValue('ai.model'));
+    setBaseUrl(getValue('ai.base_url'));
     setSystemPrompt(getValue('ai.system_prompt'));
   }, [getValue]);
+
+  const def = PROVIDERS.find((p) => p.value === provider) || PROVIDERS[0];
+
+  function changeProvider(next: string) {
+    setProvider(next);
+    const nextDef = PROVIDERS.find((p) => p.value === next);
+    if (nextDef?.defaultBaseUrl && !baseUrl) setBaseUrl(nextDef.defaultBaseUrl);
+  }
 
   function submit() {
     const patch: Record<string, string> = {
       'ai.provider': provider,
       'ai.model': model,
+      'ai.base_url': baseUrl,
       'ai.system_prompt': systemPrompt,
     };
     if (apiKey) patch['ai.api_key'] = apiKey;
@@ -154,40 +187,60 @@ function AIPanel({
   }
 
   return (
-    <Card title="AI provider" subtitle="Configure the model that powers KIMI CLAW">
+    <Card title="AI provider" subtitle="Bring your own model — any of the listed providers, or any OpenAI-compatible endpoint">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Field label="Provider">
             <Select
               value={provider}
-              onChange={(e) => setProvider(e.target.value)}
-              options={[
-                { value: 'none', label: '— Disabled —' },
-                { value: 'anthropic', label: 'Anthropic Claude' },
-                { value: 'openai', label: 'OpenAI' },
-              ]}
+              onChange={(e) => changeProvider(e.target.value)}
+              options={PROVIDERS.map((p) => ({ value: p.value, label: p.label }))}
             />
           </Field>
-          <Field label="Model">
+          <Field label="Model" hint={def.modelPlaceholder ? `e.g. ${def.modelPlaceholder}` : ''}>
             <Input
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder={provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o'}
+              placeholder={def.modelPlaceholder}
             />
           </Field>
         </div>
-        <Field
-          label="API key"
-          hint={isMasked('ai.api_key') && getValue('ai.api_key') ? `Currently set: ${getValue('ai.api_key')}` : 'Not set'}
-        >
-          <Input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Paste a fresh key to update; leave blank to keep the current one"
-          />
-        </Field>
-        <Field label="System prompt" hint="What KIMI CLAW is told before every conversation">
+        {def.needsBaseUrl && (
+          <Field label="Base URL" hint={def.baseUrlHint}>
+            <Input
+              value={baseUrl}
+              onChange={(e) => setBaseUrl(e.target.value)}
+              placeholder={def.defaultBaseUrl || 'https://…/v1'}
+            />
+          </Field>
+        )}
+        {def.needsApiKey && (
+          <Field
+            label="API key"
+            hint={
+              isMasked('ai.api_key') && getValue('ai.api_key')
+                ? `Currently set: ${getValue('ai.api_key')}`
+                : def.helpUrl
+                ? `Not set — get one at ${def.helpUrl}`
+                : 'Not set'
+            }
+          >
+            <Input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Paste a fresh key to update; leave blank to keep the current one"
+            />
+          </Field>
+        )}
+        {provider === 'ollama' && (
+          <div className="surface p-3 text-[11px] text-obsidian-300">
+            Ollama is local-only. Make sure <code className="text-gilt-300">ollama serve</code> is running
+            and that you have pulled the model (e.g. <code className="text-gilt-300">ollama pull llama3.1</code>).
+            No key is required and no data leaves the machine.
+          </div>
+        )}
+        <Field label="System prompt" hint="What the assistant is told before every conversation">
           <Textarea
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
@@ -286,7 +339,7 @@ function IntegrationsPanel({
   const [outlook, setOutlook] = useState(getValue('integrations.outlook_email'));
 
   return (
-    <Card title="Integrations" subtitle="External systems CLAW knows how to talk to">
+    <Card title="Integrations" subtitle="External systems the workspace knows how to talk to">
       <div className="space-y-4">
         <Field label="OneNote notebook path" hint="Optional — used by File Cabinet quick links">
           <Input value={onenote} onChange={(e) => setOnenote(e.target.value)} placeholder="onenote:https://… or local file path" />
@@ -490,7 +543,7 @@ function DataPanel() {
     }
   }, []);
   return (
-    <Card title="Data location" subtitle="Where CLAW keeps the SQLite database and the file vault">
+    <Card title="Data location" subtitle="Where the workspace keeps the SQLite database and the file vault">
       <div className="space-y-4">
         <div>
           <div className="text-[10px] uppercase tracking-wider text-obsidian-300">Path</div>
@@ -498,7 +551,7 @@ function DataPanel() {
         </div>
         <p className="text-xs text-obsidian-300 leading-relaxed">
           All cases, documents, drafts, audit entries, and AI conversations live inside this folder. Back it up
-          periodically by copying the folder to a removable drive. Nothing in CLAW is uploaded off-device unless
+          periodically by copying the folder to a removable drive. Nothing in this workspace is uploaded off-device unless
           you explicitly enable an AI provider on the AI tab.
         </p>
         <Button
