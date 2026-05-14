@@ -3,6 +3,7 @@ dist/
 release/
 out/
 *.log
+.qa-userdata/
 .DS_Store
 Thumbs.db
 .vscode/
