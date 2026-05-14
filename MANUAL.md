@@ -1,0 +1,704 @@
+# CLAW — User Manual
+
+**Commonwealth Legal Automation Workflow Platform**
+Court of Appeal, Jamaica · Version 2.1.0
+
+This manual shows you how to do the day's work in CLAW. It is task-driven —
+look for the heading that matches what you need to do, follow the numbered
+steps, and skip anything that does not apply.
+
+---
+
+## Contents
+
+1. [First 10 minutes — set the app up](#1-first-10-minutes--set-the-app-up)
+2. [Filing a new appeal](#2-filing-a-new-appeal)
+3. [Working a case file day-to-day](#3-working-a-case-file-day-to-day)
+4. [Calendar — booking hearings and judgment deliveries](#4-calendar--booking-hearings-and-judgment-deliveries)
+5. [Filing documents into a case](#5-filing-documents-into-a-case)
+6. [Drafting a memo, advice, judgment or order](#6-drafting-a-memo-advice-judgment-or-order)
+7. [Verifying citations before you rely on them](#7-verifying-citations-before-you-rely-on-them)
+8. [Asking KIMI CLAW for help](#8-asking-kimi-claw-for-help)
+9. [Running the pipeline — workflow board](#9-running-the-pipeline--workflow-board)
+10. [Audit ledger — proving nothing was tampered with](#10-audit-ledger--proving-nothing-was-tampered-with)
+11. [Backing up and moving CLAW between machines](#11-backing-up-and-moving-claw-between-machines)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Keyboard shortcuts and small conveniences](#13-keyboard-shortcuts-and-small-conveniences)
+
+---
+
+## 1. First 10 minutes — set the app up
+
+The first launch should look familiar — the **Dashboard** opens with sample
+cases pre-loaded so you can see the shape of the app. Before you start
+filing real work, do these four things in order.
+
+### 1.1 Confirm who you are
+
+CLAW seeds itself with **S. Richards, KC** as the current user. If that is
+not you:
+
+1. Click **Settings** in the left rail (bottom group, gear icon).
+2. Pick the **Users** tab.
+
+The current user appears with a **You** badge. You cannot change the active
+user from the UI in this build — your name shows on every audit entry, so
+make sure the right person is signed in. (For multi-user setups, see
+*§11.4 Multi-user on shared hardware*.)
+
+### 1.2 Decide whether to enable AI
+
+1. Settings → **AI provider** tab.
+2. Pick **Anthropic Claude** (recommended) or **OpenAI**.
+3. Paste a fresh API key. The key is stored locally and is never echoed
+   back to the UI — only the last four characters show after saving.
+4. Optionally edit **Model** (defaults to `claude-sonnet-4-6`) and the
+   **System prompt** that KIMI CLAW reads before every conversation.
+5. **Save AI settings.**
+
+Leave the provider as **— Disabled —** if you do not want AI running. The
+rest of the app works without it; only the Agent module is degraded.
+
+### 1.3 Set the Truth Harness floor
+
+1. Settings → **Compliance** tab.
+2. **Confidence floor** — default `0.98`. Anything below this is *Blocked*
+   by the Verification module. Lower it only if you understand the
+   consequences (see *§7.3 What the four tiers mean*).
+3. Tick **Require at least one verified citation per generated draft** if
+   you want the Generator to refuse to mark a draft as *Final* until a
+   citation in it has been verified.
+4. **Save compliance.**
+
+### 1.4 Note where your data lives
+
+1. Settings → **Data location** tab.
+2. The path shown is where your SQLite database and the file vault live.
+   On a typical Windows install this is
+   `C:\Users\<you>\AppData\Roaming\CLAW\claw-data\`.
+3. Click **Open in File Explorer** to confirm it exists.
+4. Add this folder to your backup routine (OneDrive, an external drive,
+   whatever the registry uses). See *§11 Backing up*.
+
+You are now set up. The rest of this manual assumes you have done these
+four steps.
+
+---
+
+## 2. Filing a new appeal
+
+Use this workflow when a Notice of Appeal lands on your desk.
+
+1. **Sidebar → File Cabinet → New case** (top-right gilt button).
+2. Fill in the **case number** (e.g. `SCCA 87/2026`) and **title**
+   (e.g. `R v. Henriques`). Both are required.
+3. Pick **Type** (Civil / Criminal / Application / Procedural /
+   Miscellaneous), **Status** (start with *Open*), **Term** (Hilary /
+   Easter / Trinity) and **Roster** (A / B / C / D).
+4. Type the **Presiding judge**, **Appellant** and **Respondent**, and a
+   one-paragraph **Description**.
+5. Click **Create case**.
+
+The new case appears in the left rail under its status group, and the
+detail panel opens on the right.
+
+Now attach the founding documents:
+
+6. Switch to **Upload** in the sidebar.
+7. Click the dashed box. The native Windows file picker opens — select
+   the Notice of Appeal (and any other founding documents) and click
+   **Open**.
+8. In the **Categorise** column, pick the **Linked case** you just
+   created.
+9. Pick a **Category**. For a Notice of Appeal use *Submission*. For the
+   bundle being assembled use *Record of Appeal*. For a single sealed
+   document use *Order* or *Judgment*.
+10. Add brief **Notes** (custodian, source, version, anything that helps
+    later).
+11. Click **File N document(s)**.
+
+Every file you upload gets a SHA-256 hash computed as it is copied into
+the vault. The hash is stored alongside the file and written to the
+audit ledger. The original on your desktop is unchanged — CLAW works on
+its own copy.
+
+Optionally, queue the first piece of work:
+
+12. Sidebar → **Workflow → New task**.
+13. Title: *Index transcripts*. **Stage:** Intake. **Priority:** Normal.
+    **Linked case:** the one you just made. **Due date:** seven days
+    from today.
+14. **Create task.**
+
+And book the first hearing:
+
+15. Sidebar → **Schedule → New event**.
+16. **Title:** *Case management — R v. Henriques*. Pick a date, time
+    range, **Type:** *Case management*, **Linked case:** the new case,
+    **Term** and **Roster** to match the case.
+17. **Create.**
+
+The case now exists, has its founding documents, has a first task in
+the pipeline, and is on the calendar.
+
+---
+
+## 3. Working a case file day-to-day
+
+Every morning, start in this order:
+
+1. **Dashboard** — scan the four KPI cards across the top. The two
+   that matter most are *Overdue work* and *Audit chain*. If *Audit
+   chain* says anything other than **Intact**, stop and follow *§10.3
+   When the chain breaks*.
+2. Look at **Upcoming hearings** on the right of the dashboard. If
+   anything is in the next 48 hours, click through to **Schedule** and
+   confirm it.
+3. Look at **Overdue work** (bottom left). Each item links to the
+   relevant case in the pipeline.
+4. **Workflow** — open the pipeline board (sidebar). You should see
+   five vertical columns. Anything you finished yesterday gets advanced
+   here (see *§9.2 Advancing a task*). Anything you cannot do, mark as
+   blocked (see *§9.3 Blocking a task*).
+
+To inspect a single case:
+
+5. Sidebar → **File Cabinet**.
+6. Use the **search box** to filter by case number, title, appellant or
+   respondent.
+7. Click the case in the left column. The right panel shows everything
+   filed against it: parties, judge, term, roster, every document.
+
+To open a document filed in the cabinet:
+
+8. In the **Documents in this folder** list, click the small external-
+   link icon next to the document. CLAW asks Windows to open the file
+   with its registered application (Adobe Reader for PDF, Word for
+   DOCX, and so on).
+
+To remove a case (or a document):
+
+9. The trash-can icon next to the case title (top right of the detail
+   panel) deletes the case **and every document filed under it**.
+   CLAW asks for confirmation; the deletion is recorded in the audit
+   ledger.
+
+---
+
+## 4. Calendar — booking hearings and judgment deliveries
+
+The Schedule module is a month-view court calendar with filters for
+**Term** and **Roster**.
+
+### 4.1 Move around the calendar
+
+- The two **chevrons** beside the month name move forward and back by
+  one month.
+- **Today** snaps to the current month.
+- The **Term** and **Roster** dropdowns filter events. Use *All* to see
+  everything.
+
+### 4.2 Add an event
+
+You can add an event two ways:
+
+- Click any day cell — the New event dialog opens with that day pre-
+  filled.
+- Click the **New event** button top right.
+
+In the dialog:
+
+1. Type a clear **title**. *"Hearing — Smith v. Jones"* beats *"Hearing"*.
+2. Pick a **Date**, **Start** and **End** time.
+3. Pick the **Type**: Hearing / Case management / Judgment delivery /
+   Admin / Deadline. The colour on the calendar grid follows the type.
+4. **Linked case** — start typing the case number; CLAW links the
+   event to the case file.
+5. **Term** and **Roster** — match the case.
+6. Optionally a **Description**.
+7. **Create.**
+
+### 4.3 Delete an event
+
+Scroll down to **All events this view** under the calendar. Each event
+has a trash-can icon. CLAW asks for confirmation. The deletion is
+audited.
+
+### 4.4 Read the dashboard "Upcoming" list
+
+The dashboard shows the next eight events. Anything beyond that, open
+the calendar.
+
+---
+
+## 5. Filing documents into a case
+
+This is the workflow you will use most often.
+
+### 5.1 What CLAW accepts
+
+The picker is pre-filtered to PDF, DOCX, DOC, XLSX, XLS, PPTX, PPT, TXT
+and RTF. You can switch the filter to **All files** in the picker if
+you have something unusual (e.g. an MP3 voice note, a scanned TIFF, an
+EML).
+
+### 5.2 The three-column flow
+
+The Upload page is intentionally a single screen in three columns:
+
+1. **Pick files** — click the dashed box. Hold Ctrl in the picker to
+   select multiple files. CLAW remembers them until you confirm or
+   cancel.
+2. **Categorise** — every uploaded file shares the category and notes
+   you set here. If you have two categories worth of files, do them in
+   two batches.
+3. **Confirm filing** — the big gilt button. CLAW hashes each file,
+   copies it into the vault, writes an audit entry, and clears the
+   form. You will see a green *Filed* row appear under *Just uploaded*.
+
+### 5.3 Best practice for naming
+
+CLAW keeps the original filename. Pick filenames the registry can read
+six months from now:
+
+- Good: `2026-05-14_R_v_Henriques_Notice_of_Appeal.pdf`
+- Bad: `Scan_001.pdf`
+
+CLAW also keeps a SHA-256 hash. If you ever need to prove a document
+has not been tampered with, the hash on the audit entry must match the
+file in the vault.
+
+### 5.4 Filing without a case
+
+Leave **Linked case** as *— Unfiled —*. The document goes into
+`<vault>/_unfiled/`. You can link it to a case later by re-filing it.
+
+---
+
+## 6. Drafting a memo, advice, judgment or order
+
+The Generator carries four templates: **Memo**, **Counsel's Written Advice**,
+**Draft Reasons for Judgment**, and **Draft Order**. Each one scaffolds a
+document in the Court's house style and lets you edit it inline.
+
+### 6.1 Generate the scaffold
+
+1. Sidebar → **Generator → New draft**.
+2. **Template** — pick one of the four.
+3. **Custom title** — optional. Leave blank to use the template title.
+4. **Linked case** — when you pick a case, CLAW autofills *Case
+   reference*, *Parties (formatted)* and *Presiding bench* from the
+   case file. Saves typing.
+5. The remaining fields are template-specific:
+   - **Case reference** — neutral citation or case number.
+   - **Subject / Recipient** — memo only.
+   - **Presiding bench** — judgment only.
+   - **Parties (formatted)** — judgment / order only. The dialog
+     auto-formats this when you pick a linked case.
+   - **Author** — your name. Defaults to the current user.
+   - **Opening paragraph** — the first substantive sentence that goes
+     into the template.
+6. **Generate.**
+
+### 6.2 Edit inline
+
+The draft opens in the right pane. Everything is editable:
+
+- **Title** — top left, click to rename.
+- **Status** — top right dropdown. Move *Draft → Reviewed → Final* as
+  the document matures.
+- **Body** — the large mono-typed text area. Edit freely.
+
+Click **Save changes** (gilt) when you are done. The status badge in
+the left list updates.
+
+### 6.3 Copy, export, delete
+
+The icon row at the top of the editor:
+
+- **Copy icon** — copies the body to the clipboard. Paste into Word for
+  final formatting.
+- **Download icon** — exports as a plain `.txt` file using the
+  document's title as the filename.
+- **Trash icon** — deletes the draft. Audited.
+
+### 6.4 House-style notes
+
+- The four templates use the Court's typical headings and the formal
+  numbering convention.
+- Where the template inserts `[bracketed placeholders]`, replace
+  them — they are deliberately bracketed so you cannot ship a draft
+  with `[APPELLANT]` still in it.
+- A signature line is the responsibility of the human author. CLAW
+  does not affix any electronic seal.
+
+---
+
+## 7. Verifying citations before you rely on them
+
+The Verification module pulls citations out of a passage of text and
+scores them against the **AI Truth Harness**.
+
+### 7.1 Run a verification
+
+1. Sidebar → **Verification**.
+2. Click **Use example text** if you want to see what an output looks
+   like, or paste your own passage into the textarea.
+3. Optionally pick a **Linked case** — the result is then attached to
+   that case file for future reference.
+4. **Run verification.**
+
+CLAW extracts every citation it recognises (Jamaican neutral citations,
+SCCA / COA App numbers, UK neutral citations, CCJ citations, statutory
+section references, and generic *X v. Y* patterns) and gives each a
+status:
+
+### 7.2 What the four tiers mean
+
+| Confidence | Tier             | What you do                                         |
+| ---------: | ---------------- | --------------------------------------------------- |
+| 100%       | Verified         | No human flag needed. Cite as fact.                 |
+| 99%        | High confidence  | Confirm in your usual sources before final draft.   |
+| 98%        | Escalation       | Stop. Double-check independently before relying.    |
+| <98%       | Blocked          | Cannot be presented as fact. Treat as a typo.       |
+
+The thresholds are governed by the **Confidence floor** setting (see
+*§1.3*).
+
+### 7.3 What the parser actually catches
+
+The parser is heuristic, not exhaustive. It is calibrated for the way
+the Jamaican appellate courts cite authorities:
+
+- **Court of Appeal Jamaica** — `SCCA 12/2025`, `COA App 3/2025`.
+- **Jamaican neutral** — `[2024] JMCA Crim 14`, `[2025] JMSC Civ 88`.
+- **UK neutral** — `[2020] UKSC 14`, `[2019] EWCA Civ 1041`.
+- **Caribbean Court of Justice** — `[2023] CCJ 4 (AJ)`.
+- **Statutes** — `section 24 of the Constitution of Jamaica`.
+- **Generic case** — `Brown v Smith [2020]`.
+
+If a citation is mangled (a missing space, a wrong year format), the
+parser will skip it. That is not a bug — your reader will skip it too.
+Fix the citation in the source text and re-run.
+
+### 7.4 Reviewing past verifications
+
+Scroll down to **Verification history** under the form. The most recent
+500 checks are listed with timestamps. Use this to prove what was
+checked, when, and what the tier was.
+
+---
+
+## 8. Asking KIMI CLAW for help
+
+KIMI CLAW is the in-app chat agent. It uses whichever provider you
+configured in *§1.2*. It is **not** a court reporter — anything it says
+is advisory until you have verified it (use *§7* to do exactly that).
+
+### 8.1 Start a conversation
+
+1. Sidebar → **Agent**.
+2. **New conversation** (top right).
+3. Give it a useful title — *"Bail authorities for SCCA 12/2025"* beats
+   *"Question"*.
+4. Optionally pick a **Linked case** so the conversation is filed with
+   that case for later.
+5. **Create.**
+
+### 8.2 Ask things
+
+- Type your prompt in the textarea at the bottom and click the send
+  arrow, or press **Ctrl+Enter**.
+- KIMI streams its reply into the conversation. While it is thinking,
+  the spinner shows *KIMI is thinking…*.
+- Each assistant message carries a confidence badge tied to the same
+  Truth Harness as the Verification module.
+
+### 8.3 What KIMI is good at
+
+- *"Summarise the procedural history below in two paragraphs."*
+- *"Distinguish R v. Brown from the Privy Council line on confessions."*
+- *"Draft an outline of arguments for the appellant in this matter."*
+- *"What are the leading Jamaican authorities on construction of
+  testamentary trust language?"*
+
+### 8.4 What KIMI is bad at
+
+- Citing things that do not exist. Always run *§7 Verification* over
+  KIMI's output before you put it in a draft.
+- Maths and time-sensitive facts. Use a calculator and a current
+  almanac.
+- Procedural directions specific to this Court. KIMI does not know the
+  current Practice Direction unless you paste it into the chat.
+
+### 8.5 Delete a conversation
+
+The trash icon top-right of the chat pane. Audited.
+
+---
+
+## 9. Running the pipeline — workflow board
+
+Workflow is a five-column Kanban: **Intake → Review → Drafting →
+Verification → Delivery**. Every task lives in exactly one column.
+
+### 9.1 Read the board
+
+Top strip:
+
+- **In pipeline** — total live tasks.
+- **Overdue** — tasks past their due date.
+- **Blocked** — tasks with a blocked reason filled in.
+- One number per stage so you can see the bottleneck at a glance.
+
+If one stage is much fatter than the others, that is the bottleneck.
+The header also shows a *bottleneck* badge in escalation colour.
+
+### 9.2 Advance a task
+
+Hover over the task card. Two ghost buttons appear:
+
+- **Advance →** moves it to the next column. Use this when the prior
+  stage is complete.
+- **Delete** removes the task (audited).
+
+### 9.3 Blocking a task
+
+There is no Block button in this build — you express blocking by
+editing the task notes to record why and what unblocks it, and by
+leaving the task in its current stage. The board surfaces blocked
+totals via the *Blocked* counter (any task with a `blocked_reason`
+field set).
+
+Future versions will expose the block reason inline.
+
+### 9.4 Plan a new task
+
+Top right: **New task**. The form mirrors the case form — pick a
+title, stage, priority, linked case, due date and notes. Tasks always
+start in **Intake** unless you change the stage.
+
+### 9.5 Daily rhythm
+
+A registrar's morning loop:
+
+1. Dashboard → confirm nothing is on fire.
+2. Workflow → advance everything you finished yesterday.
+3. Workflow → bring in any new arrivals as Intake.
+4. Schedule → confirm today's hearings.
+5. Generator → continue any draft you parked.
+
+---
+
+## 10. Audit ledger — proving nothing was tampered with
+
+Every meaningful action in CLAW writes an entry to the audit log. Each
+entry carries the SHA-256 hash of its own canonical material **and**
+the hash of the entry immediately before it. The first entry uses the
+literal string `GENESIS` as its predecessor. Modifying any historic
+entry, even by a byte, breaks the chain for every subsequent entry.
+
+### 10.1 Reading the ledger
+
+1. Sidebar → **Audit**.
+2. The top card shows the chain integrity result — **INTACT** in green
+   or **BROKEN** in red, with the total number of entries.
+3. The ledger table below shows the most recent 50 entries. Use the
+   search bar to filter by action, entity or actor.
+
+### 10.2 Exporting
+
+The **Export JSON** button at the top of the page writes the *current
+page* of the ledger to a JSON file. Use this for archival or to feed
+into external reporting.
+
+### 10.3 When the chain breaks
+
+If the integrity check ever says **BROKEN**, do this immediately:
+
+1. Note the entry ID it reports as broken (`brokenAt`).
+2. **Do not** make any further changes in CLAW — every new entry will
+   chain to a corrupted predecessor and obscure the forensic trail.
+3. Copy the entire data folder (see *§11.1*) to a safe location.
+4. Open the SQL database in a read-only tool (DB Browser for SQLite is
+   sufficient) and inspect entries on either side of the break.
+5. Report to your supervisor. The audit ledger is a court record.
+
+### 10.4 What gets audited
+
+Every create/update/delete on a case, document, workflow item,
+calendar event, generated document, agent thread or setting. Every
+verification run. Every AI message. The exact `action` strings are
+namespaced like `case.create`, `document.upload`, `verification.run`.
+
+### 10.5 What does **not** get audited
+
+- Read-only operations (opening a case to look at it).
+- Navigation between pages.
+- AI provider HTTP failures that happen before a message lands in the
+  database.
+
+---
+
+## 11. Backing up and moving CLAW between machines
+
+CLAW keeps everything in one folder. Back that folder up and you have
+backed up the application.
+
+### 11.1 Where it lives
+
+`C:\Users\<you>\AppData\Roaming\CLAW\claw-data\`
+
+Inside:
+
+- `claw.db` — the SQLite database.
+- `claw.db-wal`, `claw.db-shm` — SQLite's write-ahead log files. They
+  must be copied alongside `claw.db` or you may lose recent writes.
+- `files/` — the document vault. Inside, one subfolder per linked
+  case (named by case ID), plus `_unfiled/` for everything else.
+
+You can open this folder from inside the app: **Settings → Data
+location → Open in File Explorer**.
+
+### 11.2 Daily backup
+
+The simplest reliable plan:
+
+1. **Close CLAW** — quitting flushes the WAL into the main database.
+2. Copy `claw-data` into your usual backup (OneDrive, an external
+   drive, an internal share).
+3. Re-open CLAW.
+
+If you are willing to lose the last minute or two of work, you can
+skip the close step. SQLite WAL mode is crash-safe but a live copy may
+miss in-flight changes.
+
+### 11.3 Move CLAW to a new machine
+
+1. Install CLAW on the new machine (download the same version of
+   `CLAW-Setup-x.y.z.exe` and run it).
+2. **Do not open CLAW yet.** The fresh install will seed sample data
+   the first time you open it, and the seed will collide with any
+   restored data.
+3. Replace `C:\Users\<new-you>\AppData\Roaming\CLAW\claw-data\` with
+   the folder from your backup.
+4. Open CLAW. Your cases, documents, calendar, audit log — all of it
+   should be there.
+
+### 11.4 Multi-user on shared hardware
+
+CLAW is single-user per Windows account. Each user gets their own
+`%APPDATA%\CLAW\claw-data\` folder. The seeded "current user" is
+purely cosmetic in this build — anyone who launches CLAW on your
+account will see your data and audit-trail as you. **Do not share a
+Windows account.**
+
+### 11.5 Uninstalling
+
+Settings → Apps → search for **CLAW v2.1.0** → **Uninstall**. By
+default the uninstaller leaves `claw-data` alone (your data survives).
+If you want a clean wipe, manually delete `%APPDATA%\CLAW\` after the
+uninstaller finishes.
+
+---
+
+## 12. Troubleshooting
+
+### 12.1 Windows SmartScreen warns on first launch
+
+The installer is unsigned. Windows shows *"Windows protected your PC"*.
+Click **More info → Run anyway**. This is a one-time prompt.
+
+### 12.2 CLAW opens to a black window and never paints
+
+Quit (Alt+F4), re-open. If it happens twice in a row, the renderer
+process is wedged. Most often this is a GPU driver issue:
+
+1. Quit CLAW.
+2. Edit `%APPDATA%\CLAW\command-line-flags.txt` (create it if it does
+   not exist) with the single line `--disable-gpu`.
+3. Re-open.
+
+### 12.3 "Database is locked" toast
+
+Two CLAW windows are running at once, fighting over `claw.db`. Quit
+both. Open Task Manager and end any leftover `CLAW.exe` processes.
+Re-open once.
+
+### 12.4 Citation parser missed an obvious citation
+
+The parser does not catch every form. The reliable workaround:
+
+1. Re-format the citation to match a recognised pattern (see *§7.3*).
+2. Re-run the verification.
+
+If you find a citation form that *should* be recognised, save the
+example — the parser regexes live in `electron/ipc/verification.cjs`
+and can be extended.
+
+### 12.5 KIMI CLAW says "AI provider is not configured"
+
+Settings → AI provider → set provider → paste a fresh key → Save.
+Re-open the Agent. See *§1.2*.
+
+### 12.6 KIMI CLAW replies with a `[Provider error]`
+
+The HTTP call to Anthropic or OpenAI failed. Common causes:
+
+- Wrong key, or key revoked. Paste a fresh one in Settings.
+- Network blocked. CLAW does not use a proxy by default — check
+  whether your firewall is blocking `api.anthropic.com` or
+  `api.openai.com`.
+- Model name typo. Settings → AI provider → Model. Defaults are
+  `claude-sonnet-4-6` (Anthropic) and `gpt-4o` (OpenAI).
+
+### 12.7 "An audit entry hash mismatched" on startup
+
+The chain is broken. See *§10.3*. Stop using the app until your
+supervisor has reviewed.
+
+### 12.8 Uploaded a 2 GB scanned bundle, app got slow
+
+CLAW handles files up to a few hundred megabytes comfortably. For
+multi-gigabyte bundles, split into volumes and upload as separate
+documents under the same case (each gets its own hash). A future
+release will stream-hash so the app stays responsive on the very large
+files.
+
+---
+
+## 13. Keyboard shortcuts and small conveniences
+
+- **Ctrl+Enter** in any KIMI CLAW textarea — send the message.
+- **Esc** — closes any open dialog.
+- **Click a calendar day** — opens the New event dialog with the day
+  pre-filled.
+- **Search box on the File Cabinet** — filters by case number, title,
+  appellant or respondent in real time.
+- **Workflow card hover** — surfaces the Advance and Delete actions.
+- **Sidebar collapse button** (top of the sidebar) — collapses the rail
+  to icons-only when you need more horizontal space.
+
+---
+
+## Where to find what
+
+| If you want to…                                  | Go to                                |
+| ------------------------------------------------ | ------------------------------------ |
+| See today's headline numbers                     | Dashboard                            |
+| Add a new case                                   | File Cabinet → New case              |
+| Attach a document to a case                      | Upload                               |
+| Book a hearing                                   | Schedule → New event                 |
+| Move a task forward                              | Workflow → hover a card → Advance    |
+| Draft a memo / advice / judgment / order         | Generator → New draft                |
+| Score the citations in a passage                 | Verification → Run verification      |
+| Chat with KIMI CLAW                              | Agent → New conversation             |
+| Confirm nothing has been tampered with           | Audit → integrity card               |
+| Change AI provider, compliance, data path        | Settings                             |
+
+---
+
+**Court of Appeal, Jamaica · CLAW v2.1.0**
+For technical support, see *§12 Troubleshooting* first, then escalate
+to your system administrator. The source code and the change log live
+at <https://github.com/Machell1/Sanique-workflow>.
