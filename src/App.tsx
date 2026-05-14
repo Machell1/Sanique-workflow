@@ -11,6 +11,7 @@ import { Generator } from './pages/Generator';
 import { Audit } from './pages/Audit';
 import { Settings } from './pages/Settings';
 import { GlobalSearch } from './pages/Search';
+import { Help } from './pages/Help';
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="generator" element={<Generator />} />
         <Route path="audit" element={<Audit />} />
         <Route path="search" element={<GlobalSearch />} />
+        <Route path="help" element={<Help />} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

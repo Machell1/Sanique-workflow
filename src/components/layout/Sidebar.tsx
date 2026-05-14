@@ -11,6 +11,7 @@ import {
   History,
   Settings as SettingsIcon,
   Search as SearchIcon,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppStore } from '../../store';
@@ -27,6 +28,7 @@ const items = [
   { to: '/generator', label: 'Generator', icon: FileText },
   { to: '/audit', label: 'Audit', icon: History },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
+  { to: '/help', label: 'Help', icon: HelpCircle },
 ];
 
 export function Sidebar() {
