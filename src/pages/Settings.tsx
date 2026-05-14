@@ -215,9 +215,12 @@ function CompliancePanel({
 }) {
   const [floor, setFloor] = useState(getValue('compliance.confidence_floor') || '0.98');
   const [requireCit, setRequireCit] = useState(getValue('compliance.require_citation') === 'true');
+  const [printProvenance, setPrintProvenance] = useState(
+    (getValue('compliance.print_provenance') || 'true') === 'true'
+  );
 
   return (
-    <Card title="Compliance" subtitle="Truth Harness thresholds">
+    <Card title="Compliance" subtitle="Truth Harness thresholds + export seal">
       <div className="space-y-4">
         <Field label="Confidence floor" hint="Below this value, content is blocked from being presented as fact">
           <Input value={floor} onChange={(e) => setFloor(e.target.value)} />
@@ -231,10 +234,35 @@ function CompliancePanel({
           />
           <span>Require at least one verified citation per generated draft</span>
         </label>
+        <div className="pt-3 border-t border-white/5">
+          <label className="flex items-start gap-3 cursor-pointer text-sm">
+            <input
+              type="checkbox"
+              checked={printProvenance}
+              onChange={(e) => setPrintProvenance(e.target.checked)}
+              className="w-4 h-4 accent-gilt-500 mt-0.5"
+            />
+            <span>
+              <strong>Print provenance on exports</strong>
+              <span className="block text-[11px] text-obsidian-300 mt-0.5">
+                Stamps every exported draft with a SHA-256 fingerprint of the body, the
+                author, the timestamp and the document ID. Word exports also get a per-page
+                footer with the short hash. Turn off only if your house style forbids
+                tamper-evidence on outgoing documents.
+              </span>
+            </span>
+          </label>
+        </div>
         <div className="flex justify-end">
           <Button
             variant="gilt"
-            onClick={() => onSave({ 'compliance.confidence_floor': floor, 'compliance.require_citation': String(requireCit) })}
+            onClick={() =>
+              onSave({
+                'compliance.confidence_floor': floor,
+                'compliance.require_citation': String(requireCit),
+                'compliance.print_provenance': String(printProvenance),
+              })
+            }
             disabled={saving}
           >
             <Save className="w-4 h-4" /> Save compliance

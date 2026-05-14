@@ -1,7 +1,7 @@
 # CLAW — User Manual
 
 **Commonwealth Legal Automation Workflow Platform**
-Court of Appeal, Jamaica · Version 2.2.0
+Court of Appeal, Jamaica · Version 2.3.0
 
 This manual shows you how to do the day's work in CLAW. It is task-driven —
 look for the heading that matches what you need to do, follow the numbered
@@ -206,6 +206,19 @@ case):
     *Category*, and the *Notes*. The file content and its SHA-256 hash
     are not editable — re-upload if the file itself has changed.
 
+To produce a stand-alone **provenance certificate** for an uploaded
+document (e.g. to attach to a witness statement, or to lodge with the
+registry as proof of filing):
+
+13. Click the **shield** icon next to the document. CLAW saves a small
+    `.provenance.txt` companion file containing the document ID,
+    filename, MIME type, size, category, SHA-256, the upload timestamp
+    and actor, the linked case, and the current audit-chain integrity
+    state. The original file is never modified. Hand the certificate
+    over alongside the file; the recipient can re-hash the file and
+    compare against the value in the certificate to confirm it is
+    untouched.
+
 ---
 
 ## 4. Calendar — booking hearings and judgment deliveries
@@ -357,6 +370,43 @@ The icon row at the top of the editor:
   body laid out as paragraphs. Open straight into Word for final
   formatting and signature.
 - **Trash icon** — deletes the draft. Audited.
+
+### 6.4 The provenance seal on exported drafts
+
+If **Settings → Compliance → Print provenance on exports** is on (the
+default), every Generator export carries a provenance block at the foot
+of the document, listing:
+
+- The application that produced it (`CLAW v2.3.0`).
+- The Document ID (the database UUID).
+- The document type (memo / advice / judgment / order).
+- The current status (draft / reviewed / final).
+- The author name (the active CLAW user at the time of export).
+- The creation timestamp and the export timestamp.
+- The **SHA-256 of the body content** at the moment of export.
+
+`.docx` exports additionally carry:
+
+- A small grey **page footer** on every printed page with the short
+  hash, the export date, and the page number — so each printed sheet
+  has its own seal.
+- Native Word metadata fields (*Author*, *Title*, *Subject*,
+  *Description*) populated with the same provenance.
+
+What the seal proves, and what it does not:
+
+- It proves the document is **byte-for-byte identical to what CLAW
+  produced** at the timestamp in the block. To verify, re-hash the body
+  text and compare against the value printed in the provenance block.
+- It is **invalidated by any edit made in a word processor** after the
+  export. A document opened in Word, edited, and saved is no longer
+  what CLAW sealed. Re-export from CLAW after any change you want
+  recorded in the audit chain.
+
+To suppress the provenance block (e.g. for outgoing copies where house
+style forbids any footer), turn the setting off in
+*Settings → Compliance*. The hash is still computed and written to the
+audit ledger — only the on-page footprint is omitted.
 
 ### 6.4 House-style notes
 
@@ -790,6 +840,8 @@ files.
 | Block / unblock a task                               | Workflow → hover card → ban / play          |
 | Draft a memo / advice / judgment / order             | Generator → New draft                       |
 | Export a draft to Word (.docx)                       | Generator → open draft → document icon      |
+| Suppress the provenance footer on outgoing drafts    | Settings → Compliance → Print provenance    |
+| Issue a provenance certificate for an uploaded doc   | File Cabinet → document → shield icon       |
 | Score the citations in a passage                     | Verification → Run verification             |
 | Override a parser score / record a manual citation   | Verification → pencil / Add citation manually |
 | Chat with KIMI CLAW                                  | Agent → New conversation                    |
@@ -801,7 +853,7 @@ files.
 
 ---
 
-**Court of Appeal, Jamaica · CLAW v2.2.0**
+**Court of Appeal, Jamaica · CLAW v2.3.0**
 For technical support, see *§12 Troubleshooting* first, then escalate
 to your system administrator. The source code and the change log live
 at <https://github.com/Machell1/Sanique-workflow>.

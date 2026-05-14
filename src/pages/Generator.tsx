@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Setting } from '../lib/types';
 import { FileText, Plus, Trash2, Copy, Download, FileType2 } from 'lucide-react';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Footer, PageNumber } from 'docx';
 import { saveAs } from 'file-saver';
+import { sha256Hex, formatProvenanceBlock, shortHash } from '../lib/utils';
 import { api } from '../lib/api';
+import { useAppStore } from '../store';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -12,7 +15,6 @@ import { Field, Input, Select, Textarea } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { fmtRelative } from '../lib/format';
-import { useAppStore } from '../store';
 import type { Case, GeneratedDocument } from '../lib/types';
 
 interface Template {
@@ -41,6 +43,16 @@ export function Generator() {
     queryFn: () => api.generator.list() as Promise<GeneratedDocument[]>,
   });
 
+  const settings = useQuery<Setting[]>({
+    queryKey: ['settings', 'all'],
+    queryFn: () => api.settings.all() as Promise<Setting[]>,
+  });
+
+  const printProvenance =
+    (settings.data?.find((s) => s.key === 'compliance.print_provenance')?.value || 'true') === 'true';
+  const appVersion = useAppStore((s) => s.appVersion) || '2.3.0';
+  const currentUser = useAppStore((s) => s.currentUser);
+
   const update = useMutation({
     mutationFn: (patch: { id: string; content?: string; title?: string; status?: string }) =>
       api.generator.update(patch.id, patch, actor || undefined),
@@ -59,18 +71,36 @@ export function Generator() {
     return s.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
   }
 
-  function exportText(d: GeneratedDocument) {
-    const blob = new Blob([d.content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${safeFilename(d.title)}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function buildProvenance(d: GeneratedDocument) {
+    const hash = await sha256Hex(d.content);
+    return {
+      hash,
+      facts: {
+        appVersion,
+        documentId: d.id,
+        title: d.title,
+        docType: d.doc_type,
+        status: d.status,
+        authorName: currentUser?.name || 'unknown',
+        createdAt: d.created_at,
+        exportedAt: Date.now(),
+        contentSha256: hash,
+      },
+    };
+  }
+
+  async function exportText(d: GeneratedDocument) {
+    const body = printProvenance
+      ? `${d.content}\n\n${formatProvenanceBlock((await buildProvenance(d)).facts)}\n`
+      : d.content;
+    const blob = new Blob([body], { type: 'text/plain' });
+    saveAs(blob, `${safeFilename(d.title)}.txt`);
   }
 
   async function exportDocx(d: GeneratedDocument) {
-    // Treat blank lines as paragraph separators; otherwise each line of the
+    const { hash, facts } = await buildProvenance(d);
+
+    // Treat blank lines as paragraph separators; each non-blank line of the
     // template body becomes its own Word paragraph at body-text size.
     const lines = d.content.split(/\r?\n/);
     const paragraphs: Paragraph[] = [];
@@ -105,11 +135,60 @@ export function Generator() {
       );
     }
 
+    // Provenance block at the end of the body (always machine-readable;
+    // visible if print_provenance is on).
+    if (printProvenance) {
+      paragraphs.push(new Paragraph({ text: '' }));
+      paragraphs.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_2,
+          children: [new TextRun({ text: 'Provenance', bold: true, size: 24 })],
+        })
+      );
+      const provLines = formatProvenanceBlock(facts).split('\n');
+      for (const line of provLines) {
+        paragraphs.push(
+          new Paragraph({
+            spacing: { after: 60 },
+            children: [new TextRun({ text: line, size: 18, font: 'Consolas', color: '4A4A4A' })],
+          })
+        );
+      }
+    }
+
+    const sections: any[] = [
+      {
+        properties: {},
+        children: paragraphs,
+        ...(printProvenance && {
+          footers: {
+            default: new Footer({
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  children: [
+                    new TextRun({
+                      text: `CLAW · ${shortHash(hash, 12)} · ${new Date(facts.exportedAt).toISOString().slice(0, 10)} · `,
+                      size: 16,
+                      color: '8A8A8A',
+                    }),
+                    new TextRun({ children: ['Page ', PageNumber.CURRENT, ' of ', PageNumber.TOTAL_PAGES], size: 16, color: '8A8A8A' }),
+                  ],
+                }),
+              ],
+            }),
+          },
+        }),
+      },
+    ];
+
     const doc = new Document({
-      creator: 'CLAW v2.2.0',
+      creator: `CLAW v${appVersion} (${facts.authorName})`,
       title: d.title,
-      description: `CLAW-generated ${d.doc_type}`,
-      sections: [{ properties: {}, children: paragraphs }],
+      description: `CLAW-generated ${d.doc_type} · sha256 ${hash}`,
+      subject: `Document ID: ${d.id}`,
+      lastModifiedBy: facts.authorName,
+      sections,
     });
 
     const blob = await Packer.toBlob(doc);

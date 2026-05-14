@@ -180,6 +180,7 @@ function runSeed(db) {
     'ai.system_prompt': 'You are KIMI CLAW, a legal research assistant for the Court of Appeal, Jamaica. Cite authorities. Flag uncertainty.',
     'compliance.confidence_floor': '0.98',
     'compliance.require_citation': 'true',
+    'compliance.print_provenance': 'true',
     'integrations.onenote_path': '',
     'integrations.outlook_email': '',
     'ui.theme': 'obsidian',

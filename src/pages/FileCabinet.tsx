@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FolderClosed, FolderOpen, Plus, FileText, Trash2, ExternalLink, Search, Pencil } from 'lucide-react';
+import { FolderClosed, FolderOpen, Plus, FileText, Trash2, ExternalLink, Search, Pencil, ShieldCheck } from 'lucide-react';
+import { saveAs } from 'file-saver';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
@@ -10,7 +11,7 @@ import { Modal } from '../components/ui/Modal';
 import { Input, Field, Select, Textarea } from '../components/ui/Input';
 import { CaseStatusBadge } from '../components/ui/StatusBadge';
 import { EmptyState } from '../components/ui/EmptyState';
-import { fmtRelative, fmtBytes, fmtDate } from '../lib/format';
+import { fmtRelative, fmtBytes, fmtDate, fmtDateTime } from '../lib/format';
 import { CATEGORY_LABELS, STATUS_LABELS, TYPE_LABELS, shortHash } from '../lib/utils';
 import { useAppStore } from '../store';
 import type { Case, CaseStatus, CaseType, CourtDocument, DocCategory } from '../lib/types';
@@ -74,6 +75,52 @@ export function FileCabinet() {
     mutationFn: (id: string) => api.documents.delete(id, actor || undefined),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['documents'] }),
   });
+
+  async function exportProvenanceCertificate(d: CourtDocument, owningCase: Case | null) {
+    const audit: any = await api.audit.verify();
+    const filename = `${d.original_name.replace(/[^a-z0-9]+/gi, '_')}.provenance.txt`;
+    const lines = [
+      'CLAW — DOCUMENT PROVENANCE CERTIFICATE',
+      '======================================',
+      '',
+      `Generated at      ${new Date().toISOString()}`,
+      '',
+      'DOCUMENT',
+      '--------',
+      `Document ID       ${d.id}`,
+      `Original filename ${d.original_name}`,
+      `Stored as         ${d.filename}`,
+      `MIME type         ${d.mime_type || '—'}`,
+      `Size (bytes)      ${d.size ?? '—'}`,
+      `Category          ${CATEGORY_LABELS[d.category]}`,
+      `Notes             ${d.notes || '—'}`,
+      '',
+      'CHAIN OF CUSTODY',
+      '----------------',
+      `Filed at          ${fmtDateTime(d.uploaded_at)} (epoch ${d.uploaded_at})`,
+      `Linked case       ${owningCase ? owningCase.case_number + ' · ' + owningCase.title : '— Unfiled —'}`,
+      '',
+      'INTEGRITY',
+      '---------',
+      `File SHA-256      ${d.sha256}`,
+      `Audit chain       ${audit?.ok ? 'INTACT' : 'BROKEN at #' + audit?.brokenAt}`,
+      `Audit entries     ${audit?.total ?? '—'}`,
+      '',
+      'HOW TO VERIFY',
+      '-------------',
+      'Re-hash the file in the CLAW vault and compare against the SHA-256',
+      'above. The hashes must match exactly. To prove the audit log has',
+      'not been tampered with, open the Audit module in CLAW and confirm',
+      '"INTACT" is displayed.',
+      '',
+      'NOTES',
+      '-----',
+      'This certificate is informational. It does not contain the document',
+      'content. It proves only that, at the time of generation, CLAW held a',
+      'file with the recorded hash and chain-of-custody metadata.',
+    ];
+    saveAs(new Blob([lines.join('\n')], { type: 'text/plain' }), filename);
+  }
 
   const grouped = useMemo(() => {
     const m: Record<CaseStatus, Case[]> = { open: [], reserved: [], judgment_pending: [], closed: [] };
@@ -179,6 +226,7 @@ export function FileCabinet() {
                   if (confirm('Delete this document? The file will be removed from the local vault.'))
                     deleteDoc.mutate(id);
                 }}
+                onDocProvenance={(d) => exportProvenanceCertificate(d, selectedCase)}
               />
             )}
           </div>
@@ -234,6 +282,7 @@ function CaseDetail({
   onDelete,
   onDocEdit,
   onDocDelete,
+  onDocProvenance,
 }: {
   caseRecord: Case;
   documents: CourtDocument[];
@@ -243,6 +292,7 @@ function CaseDetail({
   onDelete: () => void;
   onDocEdit: (d: CourtDocument) => void;
   onDocDelete: (id: string) => void;
+  onDocProvenance: (d: CourtDocument) => void;
 }) {
   const c = caseRecord;
   return (
@@ -324,6 +374,9 @@ function CaseDetail({
                     title="Open file"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onDocProvenance(d)} title="Save provenance certificate">
+                    <ShieldCheck className="w-3.5 h-3.5" />
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => onDocEdit(d)} title="Edit metadata">
                     <Pencil className="w-3.5 h-3.5" />
