@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, ShieldCheck, Sparkles, FileCog, Users, FolderCog } from 'lucide-react';
+import { Save, ShieldCheck, Sparkles, FileCog, Users, FolderCog, Plus, Pencil, Trash2, Check } from 'lucide-react';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
+import { Modal } from '../components/ui/Modal';
 import { Field, Input, Select, Textarea } from '../components/ui/Input';
 import { Spinner } from '../components/ui/Spinner';
 import { useAppStore } from '../store';
 import type { Setting, User } from '../lib/types';
+
+const ROLES: User['role'][] = ['judge', 'registrar', 'counsel', 'clerk', 'admin'];
 
 export function Settings() {
   const qc = useQueryClient();
@@ -86,7 +89,12 @@ export function Settings() {
           />
         )}
         {tab === 'users' && (
-          <UsersPanel users={users.data || []} />
+          <UsersPanel
+            users={users.data || []}
+            onChanged={() => {
+              qc.invalidateQueries({ queryKey: ['users'] });
+            }}
+          />
         )}
         {tab === 'data' && (
           <DataPanel />
@@ -272,24 +280,175 @@ function IntegrationsPanel({
   );
 }
 
-function UsersPanel({ users }: { users: User[] }) {
+function UsersPanel({ users, onChanged }: { users: User[]; onChanged: () => void }) {
+  const qc = useQueryClient();
+  const actor = useAppStore((s) => s.currentUser);
+  const setCurrent = useAppStore((s) => s.setCurrentUser);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+
+  const switchUser = useMutation({
+    mutationFn: (id: string) => api.users.setCurrent(id, actor || undefined),
+    onSuccess: (u: any) => {
+      setCurrent(u as User);
+      qc.invalidateQueries({ queryKey: ['users'] });
+      onChanged();
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api.users.delete(id, actor || undefined),
+    onSuccess: () => onChanged(),
+    onError: (e) => alert((e as Error).message),
+  });
+
   return (
-    <Card title="Users" subtitle="Read-only directory of staff with access">
+    <Card
+      title="Users"
+      subtitle="Directory of staff with access. The 'current user' is whose name appears on audit entries."
+      actions={
+        <Button variant="gilt" size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="w-4 h-4" /> Add user
+        </Button>
+      }
+    >
       <ul className="divide-y divide-white/5 -mx-2">
         {users.map((u) => (
           <li key={u.id} className="px-2 py-3 flex items-center justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <div className="text-sm font-medium text-obsidian-50">{u.name}</div>
               <div className="text-[11px] text-obsidian-300">{u.email || '—'} · {u.rank || u.role}</div>
             </div>
             <div className="flex items-center gap-2">
-              {u.is_current === 1 && <Badge tone="verified">You</Badge>}
+              {u.is_current === 1 ? (
+                <Badge tone="verified">Current</Badge>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => switchUser.mutate(u.id)}
+                  title="Switch to this user"
+                >
+                  <Check className="w-3.5 h-3.5" /> Switch
+                </Button>
+              )}
               <Badge tone="neutral">{u.role}</Badge>
+              <Button size="sm" variant="ghost" onClick={() => setEditing(u)} title="Edit">
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={u.is_current === 1}
+                onClick={() => {
+                  if (confirm(`Remove ${u.name} from the directory? Their audit entries are preserved.`))
+                    remove.mutate(u.id);
+                }}
+                title="Remove"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
             </div>
           </li>
         ))}
       </ul>
+
+      {createOpen && (
+        <UserFormModal
+          mode="create"
+          onClose={() => setCreateOpen(false)}
+          onSaved={() => {
+            onChanged();
+            setCreateOpen(false);
+          }}
+        />
+      )}
+      {editing && (
+        <UserFormModal
+          mode="edit"
+          initial={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            onChanged();
+            setEditing(null);
+          }}
+        />
+      )}
     </Card>
+  );
+}
+
+function UserFormModal({
+  mode,
+  initial,
+  onClose,
+  onSaved,
+}: {
+  mode: 'create' | 'edit';
+  initial?: User;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const actor = useAppStore((s) => s.currentUser);
+  const [name, setName] = useState(initial?.name || '');
+  const [email, setEmail] = useState(initial?.email || '');
+  const [role, setRole] = useState<User['role']>(initial?.role || 'counsel');
+  const [rank, setRank] = useState(initial?.rank || '');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    if (!name.trim()) return;
+    setSubmitting(true);
+    try {
+      const payload = { name: name.trim(), email: email.trim() || null, role, rank: rank.trim() || null };
+      if (mode === 'edit' && initial) {
+        await api.users.update(initial.id, payload, actor || undefined);
+      } else {
+        await api.users.create(payload, actor || undefined);
+      }
+      onSaved();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={mode === 'edit' ? `Edit ${initial?.name}` : 'Add user'}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="gilt" onClick={submit} disabled={submitting || !name.trim()}>
+            {mode === 'edit' ? 'Save changes' : 'Add user'}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Field label="Name" required>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="A. Walker, KC" autoFocus />
+        </Field>
+        <Field label="Email">
+          <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="a.walker@coa.gov.jm" />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Role">
+            <Select
+              value={role}
+              onChange={(e) => setRole(e.target.value as User['role'])}
+              options={ROLES.map((r) => ({ value: r, label: r }))}
+            />
+          </Field>
+          <Field label="Rank" hint="optional title">
+            <Input value={rank} onChange={(e) => setRank(e.target.value)} placeholder="Justice of Appeal" />
+          </Field>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

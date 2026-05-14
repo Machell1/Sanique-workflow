@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bot, Plus, Send, Trash2, MessageSquare, Settings as SettingsIcon } from 'lucide-react';
+import { Bot, Plus, Send, Trash2, MessageSquare, Settings as SettingsIcon, Pencil } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
@@ -71,6 +71,17 @@ export function Agent() {
       setActiveId(null);
     },
   });
+
+  const rename = useMutation({
+    mutationFn: (patch: { id: string; title: string; case_id: string | null }) =>
+      api.agent.updateThread(patch.id, { title: patch.title, case_id: patch.case_id }, actor || undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['agent', 'threads'] });
+      qc.invalidateQueries({ queryKey: ['agent', 'thread', activeId] });
+    },
+  });
+
+  const [renameOpen, setRenameOpen] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -167,13 +178,19 @@ export function Agent() {
                       <p className="text-[11px] text-obsidian-300 mt-0.5">{thread.data.case_number} · {thread.data.case_title}</p>
                     )}
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => { if (confirm('Delete this conversation?')) remove.mutate(activeId!); }}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => setRenameOpen(true)} title="Rename / relink">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => { if (confirm('Delete this conversation?')) remove.mutate(activeId!); }}
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </header>
 
                 <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-4">
@@ -264,7 +281,67 @@ export function Agent() {
           }}
         />
       )}
+      {renameOpen && thread.data && (
+        <RenameThreadModal
+          thread={thread.data}
+          cases={cases.data || []}
+          onClose={() => setRenameOpen(false)}
+          onSaved={(patch) => {
+            rename.mutate({ id: thread.data!.id, ...patch });
+            setRenameOpen(false);
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function RenameThreadModal({
+  thread,
+  cases,
+  onClose,
+  onSaved,
+}: {
+  thread: AgentThread;
+  cases: Case[];
+  onClose: () => void;
+  onSaved: (patch: { title: string; case_id: string | null }) => void;
+}) {
+  const [title, setTitle] = useState(thread.title);
+  const [caseId, setCaseId] = useState(thread.case_id || '');
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Rename conversation"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="gilt" onClick={() => onSaved({ title: title.trim() || 'Untitled', case_id: caseId || null })}>
+            Save
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Field label="Title">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="block w-full h-10 rounded-md bg-obsidian-900/60 border border-white/10 px-3 py-2 text-sm text-obsidian-50 placeholder:text-obsidian-300 focus:outline-none focus:ring-2 focus:ring-gilt-500/40"
+            autoFocus
+          />
+        </Field>
+        <Field label="Linked case">
+          <Select
+            value={caseId}
+            onChange={(e) => setCaseId(e.target.value)}
+            options={[{ value: '', label: '— None —' }, ...cases.map((c) => ({ value: c.id, label: `${c.case_number} · ${c.title}` }))]}
+          />
+        </Field>
+      </div>
+    </Modal>
   );
 }
 

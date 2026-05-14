@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Trash2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Trash2, Pencil } from 'lucide-react';
 import {
   startOfMonth,
   endOfMonth,
@@ -50,6 +50,7 @@ export function Schedule() {
   const [term, setTerm] = useState<string>('');
   const [roster, setRoster] = useState<string>('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [editEvent, setEditEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const visibleStart = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
@@ -163,8 +164,10 @@ export function Schedule() {
                       {dayEvents.slice(0, 3).map((e) => (
                         <div
                           key={e.id}
-                          className={cn('text-[10px] px-1.5 py-0.5 rounded truncate', EVENT_COLORS[e.event_type])}
-                          title={e.title}
+                          role="button"
+                          onClick={(ev) => { ev.stopPropagation(); setEditEvent(e); }}
+                          className={cn('text-[10px] px-1.5 py-0.5 rounded truncate cursor-pointer', EVENT_COLORS[e.event_type])}
+                          title={`Click to edit: ${e.title}`}
                         >
                           {format(new Date(e.start_at), 'HH:mm')} · {e.title}
                         </div>
@@ -199,10 +202,14 @@ export function Schedule() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge tone="neutral">{e.event_type.replace('_', ' ')}</Badge>
+                    <Button size="sm" variant="ghost" onClick={() => setEditEvent(e)} title="Edit event">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => { if (confirm('Delete this event?')) remove.mutate(e.id); }}
+                      title="Delete event"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -215,14 +222,26 @@ export function Schedule() {
       </PageBody>
 
       {createOpen && (
-        <CreateEventModal
-          open={createOpen}
-          onClose={() => setCreateOpen(false)}
+        <EventFormModal
+          mode="create"
           initialDate={selectedDate || new Date()}
           cases={cases.data || []}
-          onCreated={() => {
+          onClose={() => setCreateOpen(false)}
+          onSubmitted={() => {
             qc.invalidateQueries({ queryKey: ['calendar'] });
             setCreateOpen(false);
+          }}
+        />
+      )}
+      {editEvent && (
+        <EventFormModal
+          mode="edit"
+          initialEvent={editEvent}
+          cases={cases.data || []}
+          onClose={() => setEditEvent(null)}
+          onSubmitted={() => {
+            qc.invalidateQueries({ queryKey: ['calendar'] });
+            setEditEvent(null);
           }}
         />
       )}
@@ -230,29 +249,33 @@ export function Schedule() {
   );
 }
 
-function CreateEventModal({
-  open,
-  onClose,
+function EventFormModal({
+  mode,
   initialDate,
+  initialEvent,
   cases,
-  onCreated,
+  onClose,
+  onSubmitted,
 }: {
-  open: boolean;
-  onClose: () => void;
-  initialDate: Date;
+  mode: 'create' | 'edit';
+  initialDate?: Date;
+  initialEvent?: CalendarEvent;
   cases: Case[];
-  onCreated: () => void;
+  onClose: () => void;
+  onSubmitted: () => void;
 }) {
   const actor = useAppStore((s) => s.currentUser);
-  const [title, setTitle] = useState('');
-  const [date, setDate] = useState(format(initialDate, 'yyyy-MM-dd'));
-  const [start, setStart] = useState('09:30');
-  const [end, setEnd] = useState('11:00');
-  const [type, setType] = useState<EventType>('hearing');
-  const [caseId, setCaseId] = useState('');
-  const [term, setTerm] = useState('Hilary');
-  const [roster, setRoster] = useState('Roster A');
-  const [description, setDescription] = useState('');
+  const seedDate = initialEvent ? new Date(initialEvent.start_at) : initialDate || new Date();
+  const seedEnd = initialEvent ? new Date(initialEvent.end_at) : new Date();
+  const [title, setTitle] = useState(initialEvent?.title || '');
+  const [date, setDate] = useState(format(seedDate, 'yyyy-MM-dd'));
+  const [start, setStart] = useState(initialEvent ? format(seedDate, 'HH:mm') : '09:30');
+  const [end, setEnd] = useState(initialEvent ? format(seedEnd, 'HH:mm') : '11:00');
+  const [type, setType] = useState<EventType>(initialEvent?.event_type || 'hearing');
+  const [caseId, setCaseId] = useState(initialEvent?.case_id || '');
+  const [term, setTerm] = useState(initialEvent?.court_term || 'Hilary');
+  const [roster, setRoster] = useState(initialEvent?.roster || 'Roster A');
+  const [description, setDescription] = useState(initialEvent?.description || '');
   const [submitting, setSubmitting] = useState(false);
 
   async function submit() {
@@ -261,20 +284,23 @@ function CreateEventModal({
     try {
       const startMs = new Date(`${date}T${start}:00`).getTime();
       const endMs = new Date(`${date}T${end}:00`).getTime();
-      await api.calendar.create(
-        {
-          title: title.trim(),
-          start_at: startMs,
-          end_at: endMs,
-          event_type: type,
-          case_id: caseId || null,
-          court_term: term,
-          roster,
-          description: description.trim() || null,
-        },
-        actor || undefined
-      );
-      onCreated();
+      const payload = {
+        title: title.trim(),
+        start_at: startMs,
+        end_at: endMs,
+        event_type: type,
+        case_id: caseId || null,
+        court_term: term,
+        roster,
+        description: description.trim() || null,
+        location: initialEvent?.location || 'Court of Appeal, Kingston',
+      };
+      if (mode === 'edit' && initialEvent) {
+        await api.calendar.update(initialEvent.id, payload, actor || undefined);
+      } else {
+        await api.calendar.create(payload, actor || undefined);
+      }
+      onSubmitted();
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -284,13 +310,15 @@ function CreateEventModal({
 
   return (
     <Modal
-      open={open}
+      open
       onClose={onClose}
-      title="New calendar event"
+      title={mode === 'edit' ? 'Edit calendar event' : 'New calendar event'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="gilt" onClick={submit} disabled={submitting || !title.trim()}>Create</Button>
+          <Button variant="gilt" onClick={submit} disabled={submitting || !title.trim()}>
+            {mode === 'edit' ? 'Save changes' : 'Create'}
+          </Button>
         </>
       }
     >

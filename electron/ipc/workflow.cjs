@@ -109,6 +109,23 @@ function advance(id, actor) {
   return updateItem(id, { stage: STAGES[idx + 1] }, actor);
 }
 
+function retreat(id, actor) {
+  const db = get();
+  const item = db.prepare('SELECT * FROM workflow_items WHERE id = ?').get(id);
+  if (!item) throw new Error('Workflow item not found');
+  const idx = STAGES.indexOf(item.stage);
+  if (idx <= 0) return item;
+  return updateItem(id, { stage: STAGES[idx - 1] }, actor);
+}
+
+function block(id, reason, actor) {
+  return updateItem(id, { blocked_reason: reason }, actor);
+}
+
+function unblock(id, actor) {
+  return updateItem(id, { blocked_reason: null }, actor);
+}
+
 function deleteItem(id, actor) {
   const db = get();
   db.prepare('DELETE FROM workflow_items WHERE id = ?').run(id);
@@ -128,5 +145,8 @@ module.exports = {
   'workflow:create': (args) => createItem(args.input, args.actor),
   'workflow:update': (args) => updateItem(args.id, args.patch, args.actor),
   'workflow:advance': (args) => advance(args.id, args.actor),
+  'workflow:retreat': (args) => retreat(args.id, args.actor),
+  'workflow:block': (args) => block(args.id, args.reason, args.actor),
+  'workflow:unblock': (args) => unblock(args.id, args.actor),
   'workflow:delete': (args) => deleteItem(args.id, args.actor),
 };

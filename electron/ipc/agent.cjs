@@ -48,6 +48,28 @@ function createThread({ title, caseId } = {}, actor) {
   return getThread(id);
 }
 
+function updateThread(id, patch, actor) {
+  const db = get();
+  const existing = db.prepare('SELECT * FROM agent_threads WHERE id = ?').get(id);
+  if (!existing) throw new Error('Thread not found');
+  const merged = {
+    id,
+    title: patch.title !== undefined ? patch.title : existing.title,
+    case_id: patch.case_id !== undefined ? patch.case_id : existing.case_id,
+    updated_at: Date.now(),
+  };
+  db.prepare('UPDATE agent_threads SET title=@title, case_id=@case_id, updated_at=@updated_at WHERE id=@id').run(merged);
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'agent.thread_update',
+    entityType: 'agent_thread',
+    entityId: id,
+    payload: patch,
+  });
+  return getThread(id);
+}
+
 function deleteThread(id, actor) {
   const db = get();
   db.prepare('DELETE FROM agent_threads WHERE id = ?').run(id);
@@ -191,6 +213,7 @@ module.exports = {
   'agent:threads': () => listThreads(),
   'agent:thread': (args) => getThread(args.id),
   'agent:createThread': (args) => createThread(args || {}, args?.actor),
+  'agent:updateThread': (args) => updateThread(args.id, args.patch, args.actor),
   'agent:deleteThread': (args) => deleteThread(args.id, args.actor),
   'agent:send': (args) => sendMessage(args, args.actor),
 };

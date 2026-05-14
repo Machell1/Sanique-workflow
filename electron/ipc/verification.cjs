@@ -107,6 +107,68 @@ function verifyText({ text, caseId, documentId }, actor) {
   };
 }
 
+function overrideVerification(id, { status, notes }, actor) {
+  const db = get();
+  const existing = db.prepare('SELECT * FROM verifications WHERE id = ?').get(id);
+  if (!existing) throw new Error('Verification not found');
+  // Manual override: human says the parser's tier is wrong. Update status and
+  // pin confidence to the floor of the new tier so the override is honest.
+  const floor =
+    status === 'verified' ? 1.0 :
+    status === 'high_confidence' ? 0.99 :
+    status === 'escalation' ? 0.98 : 0.0;
+  db.prepare(
+    'UPDATE verifications SET status = ?, confidence = ?, source = ?, notes = ? WHERE id = ?'
+  ).run(status, floor, 'manual_override', notes || null, id);
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'verification.override',
+    entityType: 'verification',
+    entityId: id,
+    payload: { previous: existing.status, new: status, notes },
+  });
+  return db.prepare('SELECT * FROM verifications WHERE id = ?').get(id);
+}
+
+function deleteVerification(id, actor) {
+  const db = get();
+  const existing = db.prepare('SELECT * FROM verifications WHERE id = ?').get(id);
+  if (!existing) return { ok: false };
+  db.prepare('DELETE FROM verifications WHERE id = ?').run(id);
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'verification.delete',
+    entityType: 'verification',
+    entityId: id,
+    payload: { citation: existing.citation },
+  });
+  return { ok: true };
+}
+
+function addManualCitation({ citation, citation_type, status, caseId, documentId, notes }, actor) {
+  const db = get();
+  const floor =
+    status === 'verified' ? 1.0 :
+    status === 'high_confidence' ? 0.99 :
+    status === 'escalation' ? 0.98 : 0.0;
+  const id = newId();
+  db.prepare(
+    `INSERT INTO verifications (id, document_id, case_id, citation, citation_type, status, confidence, source, notes, checked_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, documentId || null, caseId || null, citation, citation_type || 'manual', status, floor, 'manual_entry', notes || null, Date.now());
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'verification.manual_add',
+    entityType: 'verification',
+    entityId: id,
+    payload: { citation, status },
+  });
+  return db.prepare('SELECT * FROM verifications WHERE id = ?').get(id);
+}
+
 function listVerifications({ caseId, documentId } = {}) {
   const db = get();
   const where = [];
@@ -120,4 +182,7 @@ function listVerifications({ caseId, documentId } = {}) {
 module.exports = {
   'verification:run': (args) => verifyText(args, args.actor),
   'verification:list': (args) => listVerifications(args || {}),
+  'verification:override': (args) => overrideVerification(args.id, args.patch, args.actor),
+  'verification:delete': (args) => deleteVerification(args.id, args.actor),
+  'verification:manualAdd': (args) => addManualCitation(args, args.actor),
 };

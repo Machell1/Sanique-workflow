@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Plus, Trash2, Copy, Download } from 'lucide-react';
+import { FileText, Plus, Trash2, Copy, Download, FileType2 } from 'lucide-react';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { saveAs } from 'file-saver';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
@@ -53,14 +55,65 @@ export function Generator() {
     },
   });
 
+  function safeFilename(s: string) {
+    return s.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+  }
+
   function exportText(d: GeneratedDocument) {
     const blob = new Blob([d.content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${d.title.replace(/[^a-z0-9]+/gi, '_')}.txt`;
+    a.download = `${safeFilename(d.title)}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function exportDocx(d: GeneratedDocument) {
+    // Treat blank lines as paragraph separators; otherwise each line of the
+    // template body becomes its own Word paragraph at body-text size.
+    const lines = d.content.split(/\r?\n/);
+    const paragraphs: Paragraph[] = [];
+
+    // Title heading
+    paragraphs.push(
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: d.title, bold: true, size: 32 })],
+      })
+    );
+    paragraphs.push(new Paragraph({ text: '' }));
+
+    for (const raw of lines) {
+      const text = raw.replace(/\s+$/, '');
+      // Long single-line separators in templates (===) become a styled rule
+      if (/^=+$/.test(text)) {
+        paragraphs.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: '——————————————————————————', color: '6B6B6B' })],
+          })
+        );
+        continue;
+      }
+      paragraphs.push(
+        new Paragraph({
+          spacing: { after: 120 },
+          children: [new TextRun({ text, size: 24 })],
+        })
+      );
+    }
+
+    const doc = new Document({
+      creator: 'CLAW v2.2.0',
+      title: d.title,
+      description: `CLAW-generated ${d.doc_type}`,
+      sections: [{ properties: {}, children: paragraphs }],
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `${safeFilename(d.title)}.docx`);
   }
 
   return (
@@ -125,7 +178,8 @@ export function Generator() {
                 draft={active}
                 onSave={(patch) => update.mutate({ id: active.id, ...patch })}
                 onDelete={() => { if (confirm('Delete this draft?')) remove.mutate(active.id); }}
-                onExport={() => exportText(active)}
+                onExportTxt={() => exportText(active)}
+                onExportDocx={() => exportDocx(active)}
               />
             )}
           </div>
@@ -153,12 +207,14 @@ function DraftEditor({
   draft,
   onSave,
   onDelete,
-  onExport,
+  onExportTxt,
+  onExportDocx,
 }: {
   draft: GeneratedDocument;
   onSave: (patch: { content?: string; title?: string; status?: string }) => void;
   onDelete: () => void;
-  onExport: () => void;
+  onExportTxt: () => void;
+  onExportDocx: () => void;
 }) {
   const [title, setTitle] = useState(draft.title);
   const [content, setContent] = useState(draft.content);
@@ -183,13 +239,16 @@ function DraftEditor({
             { value: 'final', label: 'Final' },
           ]}
         />
-        <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(content)}>
+        <Button size="sm" variant="ghost" onClick={() => navigator.clipboard.writeText(content)} title="Copy to clipboard">
           <Copy className="w-3.5 h-3.5" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={onExport}>
+        <Button size="sm" variant="ghost" onClick={onExportTxt} title="Export plain text">
           <Download className="w-3.5 h-3.5" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDelete}>
+        <Button size="sm" variant="ghost" onClick={onExportDocx} title="Export Word .docx">
+          <FileType2 className="w-3.5 h-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDelete} title="Delete">
           <Trash2 className="w-3.5 h-3.5" />
         </Button>
         <Button

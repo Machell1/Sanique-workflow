@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, ChevronRight, AlertCircle, Clock, GripVertical } from 'lucide-react';
+import { Plus, ChevronRight, ChevronLeft, AlertCircle, Clock, GripVertical, Pencil, Ban, Play } from 'lucide-react';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
@@ -12,7 +11,7 @@ import { FullPageSpinner } from '../components/ui/Spinner';
 import { fmtRelative } from '../lib/format';
 import { STAGE_LABELS } from '../lib/utils';
 import { useAppStore } from '../store';
-import type { WorkflowItem, WorkflowStage, PipelineSummary, Case, Priority } from '../lib/types';
+import type { WorkflowItem, WorkflowStage, PipelineSummary, Case, Priority, User } from '../lib/types';
 
 const STAGES: WorkflowStage[] = ['intake', 'review', 'drafting', 'verification', 'delivery'];
 const PRIORITIES: Priority[] = ['low', 'normal', 'high', 'urgent'];
@@ -21,6 +20,8 @@ export function Workflow() {
   const qc = useQueryClient();
   const actor = useAppStore((s) => s.currentUser);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editItem, setEditItem] = useState<WorkflowItem | null>(null);
+  const [blockItem, setBlockItem] = useState<WorkflowItem | null>(null);
 
   const items = useQuery<WorkflowItem[]>({
     queryKey: ['workflow', 'list'],
@@ -34,12 +35,24 @@ export function Workflow() {
     queryKey: ['cases', 'list'],
     queryFn: () => api.cases.list() as Promise<Case[]>,
   });
+  const users = useQuery<User[]>({
+    queryKey: ['users', 'list'],
+    queryFn: () => api.users.list() as Promise<User[]>,
+  });
 
   const advance = useMutation({
     mutationFn: (id: string) => api.workflow.advance(id, actor || undefined),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['workflow'] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow'] }),
+  });
+
+  const retreat = useMutation({
+    mutationFn: (id: string) => api.workflow.retreat(id, actor || undefined),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow'] }),
+  });
+
+  const unblock = useMutation({
+    mutationFn: (id: string) => api.workflow.unblock(id, actor || undefined),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow'] }),
   });
 
   const remove = useMutation({
@@ -104,13 +117,21 @@ export function Workflow() {
                   </div>
                 )}
                 {grouped[stage].map((item) => (
-                  <article key={item.id} className="surface p-3 group">
+                  <article
+                    key={item.id}
+                    className={`surface p-3 group ${item.blocked_reason ? 'border-truth-blocked/40' : ''}`}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <GripVertical className="w-3.5 h-3.5 text-obsidian-400 mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-medium text-obsidian-50 leading-tight">{item.title}</h4>
                         {item.case_number && (
                           <p className="text-[11px] text-obsidian-300 mt-1 truncate">{item.case_number} · {item.case_title}</p>
+                        )}
+                        {item.blocked_reason && (
+                          <p className="text-[11px] text-truth-blocked mt-1 flex items-center gap-1">
+                            <Ban className="w-3 h-3" /> {item.blocked_reason}
+                          </p>
                         )}
                       </div>
                       <PriorityBadge priority={item.priority} />
@@ -125,16 +146,33 @@ export function Workflow() {
                       )}
                       {item.assignee_name && <span>{item.assignee_name}</span>}
                     </div>
-                    <div className="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="mt-3 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {idx > 0 && (
+                        <Button size="sm" variant="ghost" onClick={() => retreat.mutate(item.id)} title="Back one stage">
+                          <ChevronLeft className="w-3 h-3" />
+                        </Button>
+                      )}
                       {idx < STAGES.length - 1 && (
-                        <Button size="sm" variant="ghost" onClick={() => advance.mutate(item.id)}>
-                          Advance <ChevronRight className="w-3 h-3" />
+                        <Button size="sm" variant="ghost" onClick={() => advance.mutate(item.id)} title="Advance">
+                          <ChevronRight className="w-3 h-3" />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => setEditItem(item)} title="Edit">
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      {item.blocked_reason ? (
+                        <Button size="sm" variant="ghost" onClick={() => unblock.mutate(item.id)} title="Unblock">
+                          <Play className="w-3 h-3" />
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost" onClick={() => setBlockItem(item)} title="Block">
+                          <Ban className="w-3 h-3" />
                         </Button>
                       )}
                       <Button size="sm" variant="ghost" onClick={() => {
                         if (confirm('Delete this task?')) remove.mutate(item.id);
-                      }}>
-                        Delete
+                      }} title="Delete">
+                        ✕
                       </Button>
                     </div>
                   </article>
@@ -146,13 +184,37 @@ export function Workflow() {
       </PageBody>
 
       {createOpen && (
-        <CreateItemModal
-          open={createOpen}
-          onClose={() => setCreateOpen(false)}
+        <TaskFormModal
+          mode="create"
           cases={cases.data || []}
-          onCreated={() => {
+          users={users.data || []}
+          onClose={() => setCreateOpen(false)}
+          onSubmitted={() => {
             qc.invalidateQueries({ queryKey: ['workflow'] });
             setCreateOpen(false);
+          }}
+        />
+      )}
+      {editItem && (
+        <TaskFormModal
+          mode="edit"
+          initial={editItem}
+          cases={cases.data || []}
+          users={users.data || []}
+          onClose={() => setEditItem(null)}
+          onSubmitted={() => {
+            qc.invalidateQueries({ queryKey: ['workflow'] });
+            setEditItem(null);
+          }}
+        />
+      )}
+      {blockItem && (
+        <BlockModal
+          item={blockItem}
+          onClose={() => setBlockItem(null)}
+          onBlocked={() => {
+            qc.invalidateQueries({ queryKey: ['workflow'] });
+            setBlockItem(null);
           }}
         />
       )}
@@ -180,42 +242,52 @@ function PriorityBadge({ priority }: { priority: Priority }) {
   return <Badge tone={tone as any}>{priority}</Badge>;
 }
 
-function CreateItemModal({
-  open,
-  onClose,
+function TaskFormModal({
+  mode,
+  initial,
   cases,
-  onCreated,
+  users,
+  onClose,
+  onSubmitted,
 }: {
-  open: boolean;
-  onClose: () => void;
+  mode: 'create' | 'edit';
+  initial?: WorkflowItem;
   cases: Case[];
-  onCreated: () => void;
+  users: User[];
+  onClose: () => void;
+  onSubmitted: () => void;
 }) {
   const actor = useAppStore((s) => s.currentUser);
-  const [title, setTitle] = useState('');
-  const [stage, setStage] = useState<WorkflowStage>('intake');
-  const [priority, setPriority] = useState<Priority>('normal');
-  const [caseId, setCaseId] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [notes, setNotes] = useState('');
+  const [title, setTitle] = useState(initial?.title || '');
+  const [stage, setStage] = useState<WorkflowStage>(initial?.stage || 'intake');
+  const [priority, setPriority] = useState<Priority>(initial?.priority || 'normal');
+  const [caseId, setCaseId] = useState(initial?.case_id || '');
+  const [assignedTo, setAssignedTo] = useState(initial?.assigned_to || '');
+  const [dueDate, setDueDate] = useState(
+    initial?.due_date ? new Date(initial.due_date).toISOString().slice(0, 10) : ''
+  );
+  const [notes, setNotes] = useState(initial?.notes || '');
   const [submitting, setSubmitting] = useState(false);
 
   async function submit() {
     if (!title.trim()) return;
     setSubmitting(true);
     try {
-      await api.workflow.create(
-        {
-          title: title.trim(),
-          stage,
-          priority,
-          case_id: caseId || null,
-          due_date: dueDate ? new Date(dueDate).getTime() : null,
-          notes: notes.trim() || null,
-        },
-        actor || undefined
-      );
-      onCreated();
+      const patch = {
+        title: title.trim(),
+        stage,
+        priority,
+        case_id: caseId || null,
+        assigned_to: assignedTo || null,
+        due_date: dueDate ? new Date(dueDate).getTime() : null,
+        notes: notes.trim() || null,
+      };
+      if (mode === 'edit' && initial) {
+        await api.workflow.update(initial.id, patch, actor || undefined);
+      } else {
+        await api.workflow.create(patch, actor || undefined);
+      }
+      onSubmitted();
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -225,15 +297,14 @@ function CreateItemModal({
 
   return (
     <Modal
-      open={open}
+      open
       onClose={onClose}
-      title="New workflow task"
-      description="Add a task to the pipeline."
+      title={mode === 'edit' ? 'Edit task' : 'New workflow task'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button variant="gilt" onClick={submit} disabled={submitting || !title.trim()}>
-            Create task
+            {mode === 'edit' ? 'Save changes' : 'Create task'}
           </Button>
         </>
       }
@@ -265,6 +336,13 @@ function CreateItemModal({
             options={[{ value: '', label: '— None —' }, ...cases.map((c) => ({ value: c.id, label: `${c.case_number} · ${c.title}` }))]}
           />
         </Field>
+        <Field label="Assigned to">
+          <Select
+            value={assignedTo}
+            onChange={(e) => setAssignedTo(e.target.value)}
+            options={[{ value: '', label: '— Unassigned —' }, ...users.map((u) => ({ value: u.id, label: `${u.name} · ${u.rank || u.role}` }))]}
+          />
+        </Field>
         <Field label="Due date">
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </Field>
@@ -272,6 +350,50 @@ function CreateItemModal({
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional context" />
         </Field>
       </div>
+    </Modal>
+  );
+}
+
+function BlockModal({ item, onClose, onBlocked }: { item: WorkflowItem; onClose: () => void; onBlocked: () => void }) {
+  const actor = useAppStore((s) => s.currentUser);
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    if (!reason.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.workflow.block(item.id, reason.trim(), actor || undefined);
+      onBlocked();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Block task"
+      description={item.title}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="danger" onClick={submit} disabled={submitting || !reason.trim()}>Block task</Button>
+        </>
+      }
+    >
+      <Field label="Reason" required hint="What is blocking this, and what unblocks it?">
+        <Textarea
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Awaiting transcript from court reporter; ETA Friday."
+          autoFocus
+          className="min-h-[120px]"
+        />
+      </Field>
     </Modal>
   );
 }

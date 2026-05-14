@@ -71,6 +71,29 @@ async function uploadDocument({ caseId, sourcePath, originalName, mimeType, cate
   return getDocument(docId);
 }
 
+function updateDocument(id, patch, actor) {
+  const db = get();
+  const doc = getDocument(id);
+  if (!doc) throw new Error('Document not found');
+  // Allow editing only metadata, not the file content itself.
+  const merged = {
+    id,
+    case_id: patch.case_id !== undefined ? patch.case_id : doc.case_id,
+    category: patch.category !== undefined ? patch.category : doc.category,
+    notes: patch.notes !== undefined ? patch.notes : doc.notes,
+  };
+  db.prepare('UPDATE documents SET case_id=@case_id, category=@category, notes=@notes WHERE id=@id').run(merged);
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'document.update',
+    entityType: 'document',
+    entityId: id,
+    payload: patch,
+  });
+  return getDocument(id);
+}
+
 function deleteDocument(id, actor) {
   const db = get();
   const doc = getDocument(id);
@@ -104,6 +127,7 @@ module.exports = {
   'documents:list': (args) => listDocuments(args || {}),
   'documents:get': (args) => getDocument(args.id),
   'documents:upload': (args) => uploadDocument(args, args.actor),
+  'documents:update': (args) => updateDocument(args.id, args.patch, args.actor),
   'documents:delete': (args) => deleteDocument(args.id, args.actor),
   'documents:resolve': (args) => openDocument(args.id),
 };

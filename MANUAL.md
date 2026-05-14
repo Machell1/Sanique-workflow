@@ -1,7 +1,7 @@
 # CLAW — User Manual
 
 **Commonwealth Legal Automation Workflow Platform**
-Court of Appeal, Jamaica · Version 2.1.0
+Court of Appeal, Jamaica · Version 2.2.0
 
 This manual shows you how to do the day's work in CLAW. It is task-driven —
 look for the heading that matches what you need to do, follow the numbered
@@ -176,12 +176,35 @@ To open a document filed in the cabinet:
    with its registered application (Adobe Reader for PDF, Word for
    DOCX, and so on).
 
+To change the status of a case (e.g. *open* → *reserved* on the day
+the bench reserves judgment):
+
+9. With the case open in the detail panel, the **Status** dropdown sits
+   in the top-right corner. Pick the new status; the change is saved
+   immediately and recorded in the audit ledger.
+
+To edit any other field on the case (title, parties, term, roster,
+presiding judge, description):
+
+10. Click the **pencil** icon at the top right of the case detail panel.
+    The same form you used to create the case opens, pre-filled. Save
+    your changes.
+
 To remove a case (or a document):
 
-9. The trash-can icon next to the case title (top right of the detail
-   panel) deletes the case **and every document filed under it**.
-   CLAW asks for confirmation; the deletion is recorded in the audit
-   ledger.
+11. The trash-can icon next to the case title (top right of the detail
+    panel) deletes the case **and every document filed under it**.
+    CLAW asks for confirmation; the deletion is recorded in the audit
+    ledger.
+
+To re-categorise or re-link a filed document (you filed an *Exhibit*
+that turned out to be a *Submission*, or you filed under the wrong
+case):
+
+12. In the **Documents in this folder** list, click the **pencil** icon
+    next to the document. You can change the *Linked case*, the
+    *Category*, and the *Notes*. The file content and its SHA-256 hash
+    are not editable — re-upload if the file itself has changed.
 
 ---
 
@@ -218,10 +241,19 @@ In the dialog:
 6. Optionally a **Description**.
 7. **Create.**
 
-### 4.3 Delete an event
+### 4.3 Edit or delete an event
 
-Scroll down to **All events this view** under the calendar. Each event
-has a trash-can icon. CLAW asks for confirmation. The deletion is
+To **reschedule** or **rename** an event, either:
+
+- Click the coloured event chip directly inside a calendar day cell, or
+- Scroll to **All events this view** and click the pencil icon next to
+  the event.
+
+The form opens pre-filled with the event's current values. Change what
+you need and click **Save changes**.
+
+To **delete** an event, use the trash-can icon next to it in the *All
+events this view* list. CLAW asks for confirmation. The deletion is
 audited.
 
 ### 4.4 Read the dashboard "Upcoming" list
@@ -316,10 +348,14 @@ the left list updates.
 
 The icon row at the top of the editor:
 
-- **Copy icon** — copies the body to the clipboard. Paste into Word for
-  final formatting.
+- **Copy icon** — copies the body to the clipboard. Paste anywhere for
+  ad-hoc reuse.
 - **Download icon** — exports as a plain `.txt` file using the
   document's title as the filename.
+- **Document icon** (next to Download) — **exports as a Microsoft Word
+  `.docx` file**, with the title styled as a centred heading and the
+  body laid out as paragraphs. Open straight into Word for final
+  formatting and signature.
 - **Trash icon** — deletes the draft. Audited.
 
 ### 6.4 House-style notes
@@ -381,11 +417,38 @@ If a citation is mangled (a missing space, a wrong year format), the
 parser will skip it. That is not a bug — your reader will skip it too.
 Fix the citation in the source text and re-run.
 
-### 7.4 Reviewing past verifications
+### 7.4 Reviewing, overriding, and removing past verifications
 
 Scroll down to **Verification history** under the form. The most recent
 500 checks are listed with timestamps. Use this to prove what was
 checked, when, and what the tier was.
+
+If a human review disagrees with the parser's score, click the
+**pencil** icon on the row. Choose the correct tier and explain why in
+the notes. The override is recorded in the audit ledger with both the
+previous tier and the new one — the original score is not silently
+overwritten.
+
+If an entry was created in error (wrong text pasted, accidental run),
+click the **bin** icon to remove it. The deletion itself is audited.
+
+### 7.5 Adding a citation manually
+
+Use this when a citation should be on the record but the parser did not
+catch it (an unusual format, a regulation reference, a foreign
+authority you want to flag for the bench):
+
+1. **Add citation manually** (top right of the Verification page).
+2. Type the citation exactly as it should be quoted.
+3. Pick a **Type** that best fits (Statute section, Jamaican neutral,
+   CCJ, etc., or just *Manual* for anything else).
+4. Pick the **Tier** you are willing to certify the citation at.
+5. Optionally link to a case and add notes (source, holding, paragraph
+   reference).
+6. **Record.**
+
+The entry is added to the same history table and audited as a manual
+addition.
 
 ---
 
@@ -431,7 +494,12 @@ is advisory until you have verified it (use *§7* to do exactly that).
 - Procedural directions specific to this Court. KIMI does not know the
   current Practice Direction unless you paste it into the chat.
 
-### 8.5 Delete a conversation
+### 8.5 Rename or relink a conversation
+
+Click the **pencil** icon at the top of the chat pane. You can change
+the title and the linked case. The conversation history is preserved.
+
+### 8.6 Delete a conversation
 
 The trash icon top-right of the chat pane. Audited.
 
@@ -454,23 +522,34 @@ Top strip:
 If one stage is much fatter than the others, that is the bottleneck.
 The header also shows a *bottleneck* badge in escalation colour.
 
-### 9.2 Advance a task
+### 9.2 Move a task between stages
 
-Hover over the task card. Two ghost buttons appear:
+Hover over the task card. A row of action icons appears at the bottom:
 
-- **Advance →** moves it to the next column. Use this when the prior
-  stage is complete.
-- **Delete** removes the task (audited).
+- **←** moves the task back one stage. Use this when work returns from
+  *Verification* to *Drafting* because of a missing authority, for
+  example.
+- **→** advances the task to the next stage.
+- **Pencil** opens the full edit dialog (title, stage, priority,
+  linked case, assignee, due date, notes).
+- **Ban / Play** blocks or unblocks the task. See §9.3.
+- **✕** deletes the task.
+
+All movements are audited.
 
 ### 9.3 Blocking a task
 
-There is no Block button in this build — you express blocking by
-editing the task notes to record why and what unblocks it, and by
-leaving the task in its current stage. The board surfaces blocked
-totals via the *Blocked* counter (any task with a `blocked_reason`
-field set).
+Click the **ban (no-entry)** icon on the task card. A dialog opens and
+asks you for the **reason** ("What is blocking this, and what unblocks
+it?"). Type the reason and click **Block task**.
 
-Future versions will expose the block reason inline.
+The card now shows a red border, the reason inline, and a *play* icon
+that unblocks the task when the impediment is cleared. The blocked
+count at the top of the page goes up. The original stage is preserved
+— blocking does not move the task.
+
+To **unblock**, click the *play* icon on the card. The block reason is
+cleared and the task continues normally.
 
 ### 9.4 Plan a new task
 
@@ -588,10 +667,23 @@ miss in-flight changes.
 ### 11.4 Multi-user on shared hardware
 
 CLAW is single-user per Windows account. Each user gets their own
-`%APPDATA%\CLAW\claw-data\` folder. The seeded "current user" is
-purely cosmetic in this build — anyone who launches CLAW on your
-account will see your data and audit-trail as you. **Do not share a
-Windows account.**
+`%APPDATA%\CLAW\claw-data\` folder.
+
+Inside one CLAW install you can still have a **directory of multiple
+users** (so that the audit log identifies who did what):
+
+1. **Settings → Users → Add user.**
+2. Fill in name, email, role and rank, then **Add user**.
+3. The new user appears in the list with a **Switch** button.
+4. Click **Switch** to set them as the active user. Their name will
+   appear on subsequent audit entries until you switch again.
+5. The current active user can be **edited** (pencil icon) but cannot
+   be **deleted** (you would lose your own context); switch to a
+   different user first if you need to remove someone.
+
+Switching users only changes whose name lands on the audit log; it does
+not change which Windows account or which data folder is in use.
+**Do not share a Windows account** if you need genuine separation.
 
 ### 11.5 Uninstalling
 
@@ -683,22 +775,33 @@ files.
 
 ## Where to find what
 
-| If you want to…                                  | Go to                                |
-| ------------------------------------------------ | ------------------------------------ |
-| See today's headline numbers                     | Dashboard                            |
-| Add a new case                                   | File Cabinet → New case              |
-| Attach a document to a case                      | Upload                               |
-| Book a hearing                                   | Schedule → New event                 |
-| Move a task forward                              | Workflow → hover a card → Advance    |
-| Draft a memo / advice / judgment / order         | Generator → New draft                |
-| Score the citations in a passage                 | Verification → Run verification      |
-| Chat with KIMI CLAW                              | Agent → New conversation             |
-| Confirm nothing has been tampered with           | Audit → integrity card               |
-| Change AI provider, compliance, data path        | Settings                             |
+| If you want to…                                      | Go to                                       |
+| ---------------------------------------------------- | ------------------------------------------- |
+| See today's headline numbers                         | Dashboard                                   |
+| Add a new case                                       | File Cabinet → New case                     |
+| Change a case status (e.g. *open → reserved*)        | File Cabinet → pick case → Status dropdown  |
+| Rename / edit a case                                 | File Cabinet → pick case → pencil           |
+| Attach a document to a case                          | Upload                                      |
+| Re-categorise or re-link a filed document            | File Cabinet → document → pencil            |
+| Book a hearing                                       | Schedule → New event                        |
+| Reschedule or rename a hearing                       | Schedule → click the event chip             |
+| Move a task forward / back                           | Workflow → hover card → ← / →               |
+| Edit a task in full                                  | Workflow → hover card → pencil              |
+| Block / unblock a task                               | Workflow → hover card → ban / play          |
+| Draft a memo / advice / judgment / order             | Generator → New draft                       |
+| Export a draft to Word (.docx)                       | Generator → open draft → document icon      |
+| Score the citations in a passage                     | Verification → Run verification             |
+| Override a parser score / record a manual citation   | Verification → pencil / Add citation manually |
+| Chat with KIMI CLAW                                  | Agent → New conversation                    |
+| Rename / relink a KIMI conversation                  | Agent → open thread → pencil                |
+| Confirm nothing has been tampered with               | Audit → integrity card                      |
+| Switch which user appears on the audit log           | Settings → Users → Switch                   |
+| Add or remove a user from the directory              | Settings → Users → Add user / bin           |
+| Change AI provider, compliance, data path            | Settings                                    |
 
 ---
 
-**Court of Appeal, Jamaica · CLAW v2.1.0**
+**Court of Appeal, Jamaica · CLAW v2.2.0**
 For technical support, see *§12 Troubleshooting* first, then escalate
 to your system administrator. The source code and the change log live
 at <https://github.com/Machell1/Sanique-workflow>.

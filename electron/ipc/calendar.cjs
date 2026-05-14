@@ -61,6 +61,28 @@ function createEvent(input, actor) {
   return db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id);
 }
 
+function updateEvent(id, patch, actor) {
+  const db = get();
+  const existing = db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id);
+  if (!existing) throw new Error('Calendar event not found');
+  const merged = { ...existing, ...patch };
+  db.prepare(
+    `UPDATE calendar_events SET case_id=@case_id, title=@title, description=@description,
+       start_at=@start_at, end_at=@end_at, event_type=@event_type, location=@location,
+       court_term=@court_term, roster=@roster
+     WHERE id=@id`
+  ).run(merged);
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'calendar.update',
+    entityType: 'calendar_event',
+    entityId: id,
+    payload: patch,
+  });
+  return db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id);
+}
+
 function deleteEvent(id, actor) {
   const db = get();
   db.prepare('DELETE FROM calendar_events WHERE id = ?').run(id);
@@ -77,5 +99,6 @@ function deleteEvent(id, actor) {
 module.exports = {
   'calendar:list': (args) => listEvents(args || {}),
   'calendar:create': (args) => createEvent(args.input, args.actor),
+  'calendar:update': (args) => updateEvent(args.id, args.patch, args.actor),
   'calendar:delete': (args) => deleteEvent(args.id, args.actor),
 };

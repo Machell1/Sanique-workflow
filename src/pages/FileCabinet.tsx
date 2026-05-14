@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FolderClosed, FolderOpen, Plus, FileText, Trash2, ExternalLink, Search } from 'lucide-react';
+import { FolderClosed, FolderOpen, Plus, FileText, Trash2, ExternalLink, Search, Pencil } from 'lucide-react';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
@@ -13,10 +13,22 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { fmtRelative, fmtBytes, fmtDate } from '../lib/format';
 import { CATEGORY_LABELS, STATUS_LABELS, TYPE_LABELS, shortHash } from '../lib/utils';
 import { useAppStore } from '../store';
-import type { Case, CaseStatus, CaseType, CourtDocument } from '../lib/types';
+import type { Case, CaseStatus, CaseType, CourtDocument, DocCategory } from '../lib/types';
 
 const TYPES: CaseType[] = ['civil', 'criminal', 'application', 'procedural', 'miscellaneous'];
 const STATUSES: CaseStatus[] = ['open', 'reserved', 'judgment_pending', 'closed'];
+const CATEGORIES: DocCategory[] = [
+  'record_of_appeal',
+  'submission',
+  'judgment',
+  'order',
+  'exhibit',
+  'correspondence',
+  'draft',
+  'other',
+];
+
+type CaseFormValues = Omit<Case, 'id' | 'filed_date' | 'created_at' | 'updated_at'>;
 
 export function FileCabinet() {
   const qc = useQueryClient();
@@ -25,6 +37,8 @@ export function FileCabinet() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDoc, setEditDoc] = useState<CourtDocument | null>(null);
 
   const cases = useQuery<Case[]>({
     queryKey: ['cases', 'list', search, statusFilter],
@@ -36,6 +50,15 @@ export function FileCabinet() {
     queryKey: ['documents', 'list', selectedCase?.id],
     enabled: !!selectedCase,
     queryFn: () => api.documents.list({ caseId: selectedCase!.id }) as Promise<CourtDocument[]>,
+  });
+
+  const updateStatus = useMutation({
+    mutationFn: (status: CaseStatus) => api.cases.update(selectedCase!.id, { status }, actor || undefined),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: ['cases'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      setSelectedCase(updated as Case);
+    },
   });
 
   const deleteCase = useMutation({
@@ -144,10 +167,14 @@ export function FileCabinet() {
               <CaseDetail
                 caseRecord={selectedCase}
                 documents={docs.data || []}
+                onEdit={() => setEditOpen(true)}
+                onChangeStatus={(s) => updateStatus.mutate(s)}
+                statusChanging={updateStatus.isPending}
                 onDelete={() => {
                   if (confirm(`Delete case ${selectedCase.case_number}? Linked documents will also be removed.`))
                     deleteCase.mutate(selectedCase.id);
                 }}
+                onDocEdit={setEditDoc}
                 onDocDelete={(id) => {
                   if (confirm('Delete this document? The file will be removed from the local vault.'))
                     deleteDoc.mutate(id);
@@ -159,13 +186,38 @@ export function FileCabinet() {
       </PageBody>
 
       {createOpen && (
-        <CreateCaseModal
-          open={createOpen}
+        <CaseFormModal
+          mode="create"
           onClose={() => setCreateOpen(false)}
-          onCreated={(c) => {
+          onSubmitted={(c) => {
             qc.invalidateQueries({ queryKey: ['cases'] });
             setSelectedCase(c);
             setCreateOpen(false);
+          }}
+        />
+      )}
+      {editOpen && selectedCase && (
+        <CaseFormModal
+          mode="edit"
+          initial={selectedCase}
+          onClose={() => setEditOpen(false)}
+          onSubmitted={(c) => {
+            qc.invalidateQueries({ queryKey: ['cases'] });
+            qc.invalidateQueries({ queryKey: ['dashboard'] });
+            setSelectedCase(c);
+            setEditOpen(false);
+          }}
+        />
+      )}
+      {editDoc && (
+        <DocumentEditModal
+          doc={editDoc}
+          cases={cases.data || []}
+          onClose={() => setEditDoc(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ['documents'] });
+            qc.invalidateQueries({ queryKey: ['dashboard'] });
+            setEditDoc(null);
           }}
         />
       )}
@@ -176,12 +228,20 @@ export function FileCabinet() {
 function CaseDetail({
   caseRecord,
   documents,
+  onEdit,
+  onChangeStatus,
+  statusChanging,
   onDelete,
+  onDocEdit,
   onDocDelete,
 }: {
   caseRecord: Case;
   documents: CourtDocument[];
+  onEdit: () => void;
+  onChangeStatus: (s: CaseStatus) => void;
+  statusChanging: boolean;
   onDelete: () => void;
+  onDocEdit: (d: CourtDocument) => void;
   onDocDelete: (id: string) => void;
 }) {
   const c = caseRecord;
@@ -192,8 +252,17 @@ function CaseDetail({
         subtitle={c.title}
         actions={
           <>
-            <CaseStatusBadge status={c.status} />
-            <Button variant="ghost" size="sm" onClick={onDelete}>
+            <Select
+              value={c.status}
+              onChange={(e) => onChangeStatus(e.target.value as CaseStatus)}
+              disabled={statusChanging}
+              options={STATUSES.map((s) => ({ value: s, label: STATUS_LABELS[s] }))}
+              className="h-9 w-44"
+            />
+            <Button variant="ghost" size="sm" onClick={onEdit} title="Edit case">
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onDelete} title="Delete case">
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </>
@@ -201,11 +270,12 @@ function CaseDetail({
       >
         <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
           <Detail label="Type" value={TYPE_LABELS[c.case_type]} />
+          <Detail label="Status" value={<CaseStatusBadge status={c.status} />} />
           <Detail label="Filed" value={fmtDate(c.filed_date)} />
           <Detail label="Term" value={c.court_term || '—'} />
           <Detail label="Roster" value={c.roster || '—'} />
-          <Detail label="Presiding" value={c.presiding_judge || '—'} />
           <Detail label="Updated" value={fmtRelative(c.updated_at)} />
+          <Detail label="Presiding" value={c.presiding_judge || '—'} />
         </dl>
         <div className="mt-5 pt-5 border-t border-white/5 grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
@@ -251,10 +321,14 @@ function CaseDetail({
                       const info: any = await api.documents.resolve(d.id);
                       if (info?.exists) await window.claw?.files.openItem(info.path);
                     }}
+                    title="Open file"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => onDocDelete(d.id)}>
+                  <Button size="sm" variant="ghost" onClick={() => onDocEdit(d)} title="Edit metadata">
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onDocDelete(d.id)} title="Delete file">
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -276,33 +350,35 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function CreateCaseModal({
-  open,
+function CaseFormModal({
+  mode,
+  initial,
   onClose,
-  onCreated,
+  onSubmitted,
 }: {
-  open: boolean;
+  mode: 'create' | 'edit';
+  initial?: Case;
   onClose: () => void;
-  onCreated: (c: Case) => void;
+  onSubmitted: (c: Case) => void;
 }) {
   const actor = useAppStore((s) => s.currentUser);
-  const [form, setForm] = useState({
-    case_number: '',
-    title: '',
-    case_type: 'civil' as CaseType,
-    status: 'open' as CaseStatus,
-    court_term: 'Hilary',
-    roster: 'Roster A',
-    presiding_judge: '',
-    parties_appellant: '',
-    parties_respondent: '',
-    description: '',
+  const [form, setForm] = useState<CaseFormValues>({
+    case_number: initial?.case_number || '',
+    title: initial?.title || '',
+    case_type: initial?.case_type || 'civil',
+    status: initial?.status || 'open',
+    court_term: initial?.court_term || 'Hilary',
+    roster: initial?.roster || 'Roster A',
+    presiding_judge: initial?.presiding_judge || '',
+    parties_appellant: initial?.parties_appellant || '',
+    parties_respondent: initial?.parties_respondent || '',
+    description: initial?.description || '',
   });
   const [submitting, setSubmitting] = useState(false);
 
-  function bind<K extends keyof typeof form>(k: K) {
+  function bind<K extends keyof CaseFormValues>(k: K) {
     return {
-      value: form[k] as string,
+      value: (form[k] ?? '') as string,
       onChange: (e: any) => setForm((f) => ({ ...f, [k]: e.target.value })),
     };
   }
@@ -311,8 +387,13 @@ function CreateCaseModal({
     if (!form.case_number.trim() || !form.title.trim()) return;
     setSubmitting(true);
     try {
-      const c = (await api.cases.create(form, actor || undefined)) as Case;
-      onCreated(c);
+      let result: Case;
+      if (mode === 'edit' && initial) {
+        result = (await api.cases.update(initial.id, form, actor || undefined)) as Case;
+      } else {
+        result = (await api.cases.create(form, actor || undefined)) as Case;
+      }
+      onSubmitted(result);
     } catch (e) {
       alert((e as Error).message);
     } finally {
@@ -322,15 +403,19 @@ function CreateCaseModal({
 
   return (
     <Modal
-      open={open}
+      open
       onClose={onClose}
-      title="New case"
+      title={mode === 'edit' ? `Edit case ${initial?.case_number}` : 'New case'}
       size="lg"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="gilt" onClick={submit} disabled={submitting || !form.case_number.trim() || !form.title.trim()}>
-            Create case
+          <Button
+            variant="gilt"
+            onClick={submit}
+            disabled={submitting || !form.case_number.trim() || !form.title.trim()}
+          >
+            {mode === 'edit' ? 'Save changes' : 'Create case'}
           </Button>
         </>
       }
@@ -362,6 +447,85 @@ function CreateCaseModal({
         <Field label="Description" className="col-span-2">
           <Textarea {...bind('description')} placeholder="Brief description of the matter" />
         </Field>
+      </div>
+    </Modal>
+  );
+}
+
+function DocumentEditModal({
+  doc,
+  cases,
+  onClose,
+  onSaved,
+}: {
+  doc: CourtDocument;
+  cases: Case[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const actor = useAppStore((s) => s.currentUser);
+  const [caseId, setCaseId] = useState(doc.case_id || '');
+  const [category, setCategory] = useState<DocCategory>(doc.category);
+  const [notes, setNotes] = useState(doc.notes || '');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    setSubmitting(true);
+    try {
+      await api.documents.update(
+        doc.id,
+        { case_id: caseId || null, category, notes: notes || null },
+        actor || undefined
+      );
+      onSaved();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Edit document metadata"
+      description={doc.original_name}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="gilt" onClick={submit} disabled={submitting}>Save changes</Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div className="text-xs text-obsidian-300 bg-obsidian-900/40 rounded-md p-3 font-mono break-all">
+          sha256 {doc.sha256}
+        </div>
+        <Field label="Linked case">
+          <Select
+            value={caseId}
+            onChange={(e) => setCaseId(e.target.value)}
+            options={[
+              { value: '', label: '— Unfiled —' },
+              ...cases.map((c) => ({ value: c.id, label: `${c.case_number} · ${c.title}` })),
+            ]}
+          />
+        </Field>
+        <Field label="Category">
+          <Select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as DocCategory)}
+            options={CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))}
+          />
+        </Field>
+        <Field label="Notes">
+          <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Custodian, version, source…" />
+        </Field>
+        <p className="text-[11px] text-obsidian-400">
+          Only metadata is editable. The file content and its SHA-256 hash are immutable — re-upload if the file
+          itself needs to change.
+        </p>
       </div>
     </Modal>
   );

@@ -32,6 +32,7 @@ export const api = {
   documents: {
     list: (params?: { caseId?: string; category?: string }) => invoke('documents:list', params),
     upload: (input: any, actor?: any) => invoke('documents:upload', { ...input, actor }),
+    update: (id: string, patch: any, actor?: any) => invoke('documents:update', { id, patch, actor }),
     delete: (id: string, actor?: any) => invoke('documents:delete', { id, actor }),
     resolve: (id: string) => invoke('documents:resolve', { id }),
   },
@@ -42,12 +43,16 @@ export const api = {
     create: (input: any, actor?: any) => invoke('workflow:create', { input, actor }),
     update: (id: string, patch: any, actor?: any) => invoke('workflow:update', { id, patch, actor }),
     advance: (id: string, actor?: any) => invoke('workflow:advance', { id, actor }),
+    retreat: (id: string, actor?: any) => invoke('workflow:retreat', { id, actor }),
+    block: (id: string, reason: string, actor?: any) => invoke('workflow:block', { id, reason, actor }),
+    unblock: (id: string, actor?: any) => invoke('workflow:unblock', { id, actor }),
     delete: (id: string, actor?: any) => invoke('workflow:delete', { id, actor }),
   },
   // Calendar
   calendar: {
     list: (params?: { from?: number; to?: number; term?: string; roster?: string }) => invoke('calendar:list', params),
     create: (input: any, actor?: any) => invoke('calendar:create', { input, actor }),
+    update: (id: string, patch: any, actor?: any) => invoke('calendar:update', { id, patch, actor }),
     delete: (id: string, actor?: any) => invoke('calendar:delete', { id, actor }),
   },
   // Audit
@@ -62,6 +67,10 @@ export const api = {
     run: (input: { text: string; caseId?: string; documentId?: string }, actor?: any) =>
       invoke('verification:run', { ...input, actor }),
     list: (params?: { caseId?: string; documentId?: string }) => invoke('verification:list', params),
+    override: (id: string, patch: { status: string; notes?: string }, actor?: any) =>
+      invoke('verification:override', { id, patch, actor }),
+    delete: (id: string, actor?: any) => invoke('verification:delete', { id, actor }),
+    manualAdd: (input: any, actor?: any) => invoke('verification:manualAdd', { ...input, actor }),
   },
   // Generator
   generator: {
@@ -77,6 +86,8 @@ export const api = {
     thread: (id: string) => invoke('agent:thread', { id }),
     createThread: (input: { title?: string; caseId?: string }, actor?: any) =>
       invoke('agent:createThread', { ...input, actor }),
+    updateThread: (id: string, patch: { title?: string; case_id?: string | null }, actor?: any) =>
+      invoke('agent:updateThread', { id, patch, actor }),
     deleteThread: (id: string, actor?: any) => invoke('agent:deleteThread', { id, actor }),
     send: (input: { threadId: string; content: string }, actor?: any) =>
       invoke('agent:send', { ...input, actor }),
@@ -91,6 +102,10 @@ export const api = {
   users: {
     list: () => invoke('users:list'),
     current: () => invoke('users:current'),
+    create: (input: any, actor?: any) => invoke('users:create', { input, actor }),
+    update: (id: string, patch: any, actor?: any) => invoke('users:update', { id, patch, actor }),
+    delete: (id: string, actor?: any) => invoke('users:delete', { id, actor }),
+    setCurrent: (id: string, actor?: any) => invoke('users:setCurrent', { id, actor }),
   },
   // Dashboard
   dashboard: {
