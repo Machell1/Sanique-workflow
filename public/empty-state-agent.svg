@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <radialGradient id="agentGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:rgba(59,130,246,0.15)"/>
+      <stop offset="100%" style="stop-color:transparent"/>
+    </radialGradient>
+  </defs>
+  <!-- Dark background -->
+  <rect width="400" height="300" fill="#0A0A0F" rx="12"/>
+  <!-- Subtle glow -->
+  <circle cx="200" cy="140" r="100" fill="url(#agentGlow)"/>
+  <!-- Scales of justice with neural network nodes -->
+  <g transform="translate(200,130)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Central pillar -->
+    <line x1="0" y1="-60" x2="0" y2="50" stroke="#3B82F6" stroke-width="2" opacity="0.6"/>
+    <!-- Cross bar -->
+    <line x1="-50" y1="-60" x2="50" y2="-60" stroke="#3B82F6" stroke-width="2" opacity="0.6"/>
+    <!-- Left scale pan -->
+    <path d="M-50 -60 L-65 -40 L-35 -40 Z" stroke="#3B82F6" stroke-width="1.5" opacity="0.5"/>
+    <!-- Right scale pan -->
+    <path d="M50 -60 L35 -40 L65 -40 Z" stroke="#3B82F6" stroke-width="1.5" opacity="0.5"/>
+    <!-- Neural nodes -->
+    <circle cx="-30" cy="-20" r="6" fill="#3B82F6" opacity="0.4"/>
+    <circle cx="30" cy="-20" r="6" fill="#3B82F6" opacity="0.4"/>
+    <circle cx="0" cy="0" r="8" fill="#3B82F6" opacity="0.5"/>
+    <circle cx="-40" cy="20" r="5" fill="#3B82F6" opacity="0.3"/>
+    <circle cx="40" cy="20" r="5" fill="#3B82F6" opacity="0.3"/>
+    <circle cx="0" cy="30" r="6" fill="#3B82F6" opacity="0.4"/>
+    <!-- Neural connections -->
+    <line x1="-30" y1="-20" x2="0" y2="0" stroke="#3B82F6" stroke-width="1" opacity="0.3"/>
+    <line x1="30" y1="-20" x2="0" y2="0" stroke="#3B82F6" stroke-width="1" opacity="0.3"/>
+    <line x1="-40" y1="20" x2="0" y2="0" stroke="#3B82F6" stroke-width="1" opacity="0.3"/>
+    <line x1="40" y1="20" x2="0" y2="0" stroke="#3B82F6" stroke-width="1" opacity="0.3"/>
+    <line x1="0" y1="30" x2="0" y2="0" stroke="#3B82F6" stroke-width="1" opacity="0.3"/>
+    <!-- Base -->
+    <rect x="-25" y="50" width="50" height="6" rx="3" fill="#3B82F6" opacity="0.3"/>
+  </g>
+  <!-- Subtle text hint -->
+  <text x="200" y="250" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#4A4E63">KIMI CLAW Agent</text>
+</svg>

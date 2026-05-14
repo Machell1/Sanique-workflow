@@ -1,0 +1,46 @@
+CLAW — Commonwealth Legal Automation Workflow Platform
+Court of Appeal, Jamaica
+Copyright (c) 2025 Court of Appeal, Jamaica. All rights reserved.
+
+LICENSE TERMS
+
+This software ("CLAW") is provided to authorized personnel of the Court
+of Appeal, Jamaica and other duly licensed users for the purpose of
+managing court operations, preparing legal documents, and maintaining
+case records.
+
+By installing this software you agree to the following:
+
+1. AUTHORIZED USE
+   The software is licensed for use by judicial officers, registry
+   staff, counsel, and other authorized users. Unauthorized
+   installation or use is prohibited.
+
+2. CONFIDENTIALITY
+   Information processed by this software may include privileged
+   communications and case records subject to confidentiality
+   obligations. Users must comply with all applicable rules of court,
+   data protection law, and professional conduct rules.
+
+3. AUDIT TRAIL
+   The software maintains an immutable, cryptographically chained
+   audit log of significant actions. This log may be reviewed by
+   authorized supervisors at any time.
+
+4. NO WARRANTY
+   The software is provided "AS IS" without warranty of any kind,
+   express or implied. The Court of Appeal, Jamaica disclaims all
+   warranties to the maximum extent permitted by law.
+
+5. LIMITATION OF LIABILITY
+   To the maximum extent permitted by law, the Court of Appeal,
+   Jamaica shall not be liable for any damages arising out of the
+   use or inability to use the software.
+
+6. AI ASSISTANCE
+   AI-generated suggestions, drafts, citations, and verifications
+   are advisory only and must be verified by a qualified legal
+   professional before being relied upon.
+
+By clicking "I Agree" you confirm that you are an authorized user
+and that you accept these terms.

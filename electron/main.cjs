@@ -1,110 +1,196 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
-const path = require('path');
-const fs = require('fs');
+const { app, BrowserWindow, ipcMain, shell, dialog, Menu } = require('electron');
+const path = require('node:path');
+const fs = require('node:fs');
 
-// ─── Keep a global reference of the window object to prevent garbage collection ───
-let mainWindow;
+const isDev = !!process.env.CLAW_DEV;
 
-// ─── Determine if running in development ───
-const isDev = !app.isPackaged;
+let mainWindow = null;
+let dbConnection = null;
+let ipcRouter = null;
 
-// ─── Create the main application window ───
+function getIconPath() {
+  const candidates = [
+    path.join(__dirname, '..', 'build', 'icon.ico'),
+    path.join(process.resourcesPath || __dirname, 'build', 'icon.ico'),
+    path.join(__dirname, '..', 'build', 'icon.png'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return undefined;
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 1000,
     minWidth: 1200,
-    minHeight: 700,
-    show: false, // Show after ready-to-render to prevent flash
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      preload: undefined, // No preload script needed for static app
-    },
-    title: 'CLAW - Commonwealth Legal Automation Workflow',
-    backgroundColor: '#0A0A0F', // Match obsidian background
+    minHeight: 720,
+    show: false,
+    backgroundColor: '#0A0A0F',
+    title: 'CLAW — Commonwealth Legal Automation Workflow',
     icon: getIconPath(),
-    // Frameless on Windows for custom title bar look
-    titleBarStyle: 'default',
-    center: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+      preload: path.join(__dirname, 'preload.cjs'),
+    },
   });
 
-  // ─── Load the app ───
   if (isDev) {
-    // In dev, load from Vite dev server
-    mainWindow.loadURL('http://localhost:3000');
-    mainWindow.webContents.openDevTools();
+    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    // In production, load the built dist/index.html
-    const indexPath = path.join(__dirname, '..', 'dist', 'index.html');
-    mainWindow.loadFile(indexPath);
+    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
 
-  // ─── Show window when ready ───
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    mainWindow.focus();
   });
 
-  // ─── Handle external links ───
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Open external URLs in system browser, not in Electron
     shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  // ─── Handle OneNote protocol links ───
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('onenote:')) {
+    const target = new URL(url);
+    const isLocal = target.origin === 'http://localhost:5173' || target.protocol === 'file:';
+    if (!isLocal) {
       event.preventDefault();
       shell.openExternal(url);
     }
   });
 
-  // ─── Clean up on close ───
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
-// ─── Get icon path ───
-function getIconPath() {
-  const iconDir = path.join(__dirname, '..', 'dist');
-  // Try different icon formats
-  const iconPng = path.join(iconDir, 'icon.png');
-  const iconIco = path.join(iconDir, 'icon.ico');
-  
-  if (fs.existsSync(iconIco)) return iconIco;
-  if (fs.existsSync(iconPng)) return iconPng;
-  return undefined;
+function buildMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Open data folder',
+          click: () => {
+            if (dbConnection) shell.openPath(dbConnection.getDataDir());
+          },
+        },
+        { type: 'separator' },
+        { role: 'quit', label: 'Quit CLAW' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About CLAW',
+          click: () => {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'About CLAW',
+              message: 'CLAW — Commonwealth Legal Automation Workflow',
+              detail: `Version ${app.getVersion()}\n\nCourt of Appeal, Jamaica\nCopyright (c) 2025`,
+              buttons: ['OK'],
+            });
+          },
+        },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// ─── App event handlers ───
+function registerIpc() {
+  ipcMain.handle('claw:invoke', async (_evt, { channel, args }) => {
+    try {
+      const result = await ipcRouter.dispatch(channel, args);
+      return { ok: true, data: result };
+    } catch (err) {
+      console.error(`[IPC] ${channel} failed:`, err);
+      return { ok: false, error: err.message || String(err) };
+    }
+  });
 
-// App ready
+  ipcMain.handle('claw:pickFile', async (_evt, options = {}) => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile', ...(options.multi ? ['multiSelections'] : [])],
+      filters: options.filters || [
+        { name: 'Documents', extensions: ['pdf', 'docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'txt', 'rtf'] },
+        { name: 'All files', extensions: ['*'] },
+      ],
+    });
+    if (result.canceled) return { canceled: true };
+    return { canceled: false, paths: result.filePaths };
+  });
+
+  ipcMain.handle('claw:pickSave', async (_evt, options = {}) => {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: options.defaultPath,
+      filters: options.filters || [{ name: 'All files', extensions: ['*'] }],
+    });
+    if (result.canceled) return { canceled: true };
+    return { canceled: false, path: result.filePath };
+  });
+
+  ipcMain.handle('claw:showItem', async (_evt, p) => {
+    if (!p) return false;
+    shell.showItemInFolder(p);
+    return true;
+  });
+
+  ipcMain.handle('claw:openItem', async (_evt, p) => {
+    if (!p) return false;
+    const err = await shell.openPath(p);
+    return !err;
+  });
+
+  ipcMain.handle('claw:version', () => app.getVersion());
+  ipcMain.handle('claw:dataDir', () => dbConnection.getDataDir());
+}
+
 app.whenReady().then(() => {
+  // Lazy-require so DB initializes after app.getPath() is available
+  dbConnection = require('./db/connection.cjs');
+  dbConnection.init(app.getPath('userData'));
+  ipcRouter = require('./ipc/index.cjs');
+
+  registerIpc();
+  buildMenu();
   createWindow();
 
   app.on('activate', () => {
-    // On macOS re-create window when dock icon is clicked
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-// Quit when all windows are closed (Windows/Linux)
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    if (dbConnection) dbConnection.close();
     app.quit();
   }
 });
 
-// ─── Security: Prevent new window creation ───
-app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (event, navigationUrl) => {
-    event.preventDefault();
-    shell.openExternal(navigationUrl);
+// Hardening — block creation of additional renderers
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 });

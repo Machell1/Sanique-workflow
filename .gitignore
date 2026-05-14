@@ -1,0 +1,21 @@
+node_modules/
+dist/
+release/
+out/
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.env
+.env.local
+*.tsbuildinfo
+
+# electron-builder output
+release/
+
+# Build artifacts
+*.exe
+*.msi
+*.blockmap
+latest.yml

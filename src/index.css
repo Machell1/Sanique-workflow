@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  ::selection {
+    background-color: rgba(218, 171, 53, 0.35);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.16);
+  }
+}
+
+@layer components {
+  .panel {
+    @apply bg-obsidian-800/70 border border-white/5 rounded-xl shadow-panel backdrop-blur-sm;
+  }
+  .surface {
+    @apply bg-obsidian-700/60 border border-white/5 rounded-lg;
+  }
+  .gilt-divider {
+    background: linear-gradient(90deg, transparent, rgba(218, 171, 53, 0.6), transparent);
+    height: 1px;
+  }
+  .focus-gilt {
+    @apply focus:outline-none focus:ring-2 focus:ring-gilt-500/50 focus:ring-offset-2 focus:ring-offset-obsidian-900;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer utilities {
+  .truth-grid-bg {
+    background-image: radial-gradient(circle at 1px 1px, rgba(218, 171, 53, 0.08) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+  .glow-gilt {
+    box-shadow: 0 0 24px -8px rgba(218, 171, 53, 0.45);
+  }
+}

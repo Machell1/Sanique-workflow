@@ -1,0 +1,109 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const { get, getFilesDir } = require('../db/connection.cjs');
+const { newId, sha256File } = require('../services/hash.cjs');
+const { appendAudit } = require('../services/audit.cjs');
+
+function listDocuments({ caseId, category } = {}) {
+  const db = get();
+  const where = [];
+  const params = {};
+  if (caseId) {
+    where.push('case_id = @caseId');
+    params.caseId = caseId;
+  }
+  if (category) {
+    where.push('category = @category');
+    params.category = category;
+  }
+  const sql = `SELECT * FROM documents ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY uploaded_at DESC`;
+  return db.prepare(sql).all(params);
+}
+
+function getDocument(id) {
+  const db = get();
+  return db.prepare('SELECT * FROM documents WHERE id = ?').get(id);
+}
+
+async function uploadDocument({ caseId, sourcePath, originalName, mimeType, category, notes }, actor) {
+  if (!fs.existsSync(sourcePath)) throw new Error('Source file does not exist');
+  const stat = fs.statSync(sourcePath);
+  const docId = newId();
+  const ext = path.extname(originalName) || path.extname(sourcePath);
+  const storedName = `${docId}${ext}`;
+  const filesDir = getFilesDir();
+  const destDir = caseId ? path.join(filesDir, caseId) : path.join(filesDir, '_unfiled');
+  fs.mkdirSync(destDir, { recursive: true });
+  const destPath = path.join(destDir, storedName);
+  fs.copyFileSync(sourcePath, destPath);
+
+  const hash = await sha256File(destPath);
+  const relPath = path.relative(filesDir, destPath).split(path.sep).join('/');
+
+  const db = get();
+  db.prepare(
+    `INSERT INTO documents (id, case_id, filename, original_name, mime_type, size, sha256, category, uploaded_by, uploaded_at, storage_path, notes)
+     VALUES (@id, @case_id, @filename, @original_name, @mime_type, @size, @sha256, @category, @uploaded_by, @uploaded_at, @storage_path, @notes)`
+  ).run({
+    id: docId,
+    case_id: caseId || null,
+    filename: storedName,
+    original_name: originalName,
+    mime_type: mimeType || null,
+    size: stat.size,
+    sha256: hash,
+    category: category || 'other',
+    uploaded_by: actor?.id || null,
+    uploaded_at: Date.now(),
+    storage_path: relPath,
+    notes: notes || null,
+  });
+
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'document.upload',
+    entityType: 'document',
+    entityId: docId,
+    payload: { original_name: originalName, sha256: hash, size: stat.size },
+  });
+
+  return getDocument(docId);
+}
+
+function deleteDocument(id, actor) {
+  const db = get();
+  const doc = getDocument(id);
+  if (!doc) return { ok: false };
+  const fullPath = path.join(getFilesDir(), doc.storage_path);
+  try {
+    if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+  } catch (e) {
+    // Non-fatal: continue with DB delete
+  }
+  db.prepare('DELETE FROM documents WHERE id = ?').run(id);
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'document.delete',
+    entityType: 'document',
+    entityId: id,
+    payload: { original_name: doc.original_name, sha256: doc.sha256 },
+  });
+  return { ok: true };
+}
+
+function openDocument(id) {
+  const doc = getDocument(id);
+  if (!doc) throw new Error('Document not found');
+  const fullPath = path.join(getFilesDir(), doc.storage_path);
+  return { path: fullPath, exists: fs.existsSync(fullPath) };
+}
+
+module.exports = {
+  'documents:list': (args) => listDocuments(args || {}),
+  'documents:get': (args) => getDocument(args.id),
+  'documents:upload': (args) => uploadDocument(args, args.actor),
+  'documents:delete': (args) => deleteDocument(args.id, args.actor),
+  'documents:resolve': (args) => openDocument(args.id),
+};
