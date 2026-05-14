@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FolderClosed, FolderOpen, Plus, FileText, Trash2, ExternalLink, Search, Pencil, ShieldCheck, Eye } from 'lucide-react';
+import { FolderClosed, FolderOpen, Plus, FileText, Trash2, ExternalLink, Search, Pencil, ShieldCheck, Eye, Layers, Mail } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { DocumentViewer } from '../components/viewers/DocumentViewer';
+import { BundleBuilder } from '../components/bundles/BundleBuilder';
+import { EmailComposeModal } from '../components/email/EmailComposeModal';
+import type { Bundle } from '../lib/types';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
@@ -42,6 +45,8 @@ export function FileCabinet() {
   const [editOpen, setEditOpen] = useState(false);
   const [editDoc, setEditDoc] = useState<CourtDocument | null>(null);
   const [viewDoc, setViewDoc] = useState<CourtDocument | null>(null);
+  const [bundleOpen, setBundleOpen] = useState(false);
+  const [emailDoc, setEmailDoc] = useState<CourtDocument | null>(null);
 
   const cases = useQuery<Case[]>({
     queryKey: ['cases', 'list', search, statusFilter],
@@ -53,6 +58,12 @@ export function FileCabinet() {
     queryKey: ['documents', 'list', selectedCase?.id],
     enabled: !!selectedCase,
     queryFn: () => api.documents.list({ caseId: selectedCase!.id }) as Promise<CourtDocument[]>,
+  });
+
+  const bundles = useQuery<Bundle[]>({
+    queryKey: ['bundles', 'list', selectedCase?.id],
+    enabled: !!selectedCase,
+    queryFn: () => api.bundles.list({ caseId: selectedCase!.id }) as Promise<Bundle[]>,
   });
 
   const updateStatus = useMutation({
@@ -216,6 +227,7 @@ export function FileCabinet() {
               <CaseDetail
                 caseRecord={selectedCase}
                 documents={docs.data || []}
+                bundles={bundles.data || []}
                 onEdit={() => setEditOpen(true)}
                 onChangeStatus={(s) => updateStatus.mutate(s)}
                 statusChanging={updateStatus.isPending}
@@ -230,6 +242,15 @@ export function FileCabinet() {
                 }}
                 onDocProvenance={(d) => exportProvenanceCertificate(d, selectedCase)}
                 onDocView={setViewDoc}
+                onDocEmail={setEmailDoc}
+                onAssembleBundle={() => setBundleOpen(true)}
+                onBundleDelete={(id) => {
+                  if (confirm('Delete this bundle? The merged PDF in the vault is removed too; sources are kept.'))
+                    api.bundles.delete(id, actor || undefined).then(() => {
+                      qc.invalidateQueries({ queryKey: ['bundles'] });
+                      qc.invalidateQueries({ queryKey: ['documents'] });
+                    });
+                }}
               />
             )}
           </div>
@@ -277,6 +298,26 @@ export function FileCabinet() {
           doc={viewDoc}
           onClose={() => setViewDoc(null)}
           onProvenance={() => exportProvenanceCertificate(viewDoc, selectedCase)}
+          onEmail={() => setEmailDoc(viewDoc)}
+        />
+      )}
+      {bundleOpen && selectedCase && (
+        <BundleBuilder
+          caseRecord={selectedCase}
+          documents={docs.data || []}
+          onClose={() => setBundleOpen(false)}
+          onCreated={() => {
+            qc.invalidateQueries({ queryKey: ['bundles'] });
+            qc.invalidateQueries({ queryKey: ['documents'] });
+            qc.invalidateQueries({ queryKey: ['dashboard'] });
+            setBundleOpen(false);
+          }}
+        />
+      )}
+      {emailDoc && (
+        <EmailComposeModal
+          target={{ kind: 'document', documentId: emailDoc.id, defaultSubject: emailDoc.original_name }}
+          onClose={() => setEmailDoc(null)}
         />
       )}
     </>
@@ -286,6 +327,7 @@ export function FileCabinet() {
 function CaseDetail({
   caseRecord,
   documents,
+  bundles,
   onEdit,
   onChangeStatus,
   statusChanging,
@@ -294,9 +336,13 @@ function CaseDetail({
   onDocDelete,
   onDocProvenance,
   onDocView,
+  onDocEmail,
+  onAssembleBundle,
+  onBundleDelete,
 }: {
   caseRecord: Case;
   documents: CourtDocument[];
+  bundles: Bundle[];
   onEdit: () => void;
   onChangeStatus: (s: CaseStatus) => void;
   statusChanging: boolean;
@@ -305,6 +351,9 @@ function CaseDetail({
   onDocDelete: (id: string) => void;
   onDocProvenance: (d: CourtDocument) => void;
   onDocView: (d: CourtDocument) => void;
+  onDocEmail: (d: CourtDocument) => void;
+  onAssembleBundle: () => void;
+  onBundleDelete: (id: string) => void;
 }) {
   const c = caseRecord;
   return (
@@ -357,6 +406,55 @@ function CaseDetail({
         )}
       </Card>
 
+      <Card
+        title="Bundles"
+        subtitle={`${bundles.length} assembled · merge case PDFs into a Record of Appeal`}
+        actions={
+          <Button size="sm" variant="gilt" onClick={onAssembleBundle}>
+            <Layers className="w-3.5 h-3.5" /> Assemble bundle
+          </Button>
+        }
+      >
+        {bundles.length === 0 ? (
+          <p className="text-sm text-obsidian-300 py-4">
+            No bundles yet. Click <em>Assemble bundle</em> to pick PDFs from this case file, reorder them, and produce a single Record of Appeal with cover page and table of contents.
+          </p>
+        ) : (
+          <ul className="divide-y divide-white/5 -mx-2">
+            {bundles.map((b) => (
+              <li key={b.id} className="flex items-center justify-between gap-3 px-2 py-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <Layers className="w-4 h-4 text-gilt-400 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-obsidian-50 truncate">{b.title}</div>
+                    <div className="text-[11px] text-obsidian-300">
+                      {b.source_documents.length} sources · {b.page_count || '?'} pages
+                      {b.output_sha256 && ` · ${shortHash(b.output_sha256, 14)}`}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const out = documents.find((d) => d.id === b.output_document_id);
+                      if (out) onDocView(out);
+                    }}
+                    title="View bundle PDF"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onBundleDelete(b.id)} title="Delete bundle">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <Card title="Documents in this folder" subtitle={`${documents.length} files filed`}>
         {documents.length === 0 ? (
           <p className="text-sm text-obsidian-300 py-4">
@@ -392,6 +490,9 @@ function CaseDetail({
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => onDocProvenance(d)} title="Save provenance certificate">
                     <ShieldCheck className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onDocEmail(d)} title="Send by email">
+                    <Mail className="w-3.5 h-3.5" />
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => onDocEdit(d)} title="Edit metadata">
                     <Pencil className="w-3.5 h-3.5" />

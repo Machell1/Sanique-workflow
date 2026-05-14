@@ -1,7 +1,7 @@
 # CLAW — User Manual
 
 **Commonwealth Legal Automation Workflow Platform**
-Court of Appeal, Jamaica · Version 2.5.0
+Court of Appeal, Jamaica · Version 2.6.0
 
 This manual shows you how to do the day's work in CLAW. It is task-driven —
 look for the heading that matches what you need to do, follow the numbered
@@ -995,6 +995,142 @@ files.
 
 ---
 
+## 14a. Bundle assembly (Record of Appeal)
+
+Court of Appeal work often calls for a single Record of Appeal made
+up of many separate PDFs in a particular order, with a cover page and
+a table of contents. From v2.6.0 CLAW does this inside the app.
+
+1. **File Cabinet → pick the case → Bundles card → Assemble bundle.**
+2. The dialog lists every PDF filed under that case, with checkboxes
+   and up / down arrows. **Tick the documents you want included and
+   put them in the right order.**
+3. Type a **bundle title** (defaults to *"Record of Appeal — &lt;case
+   number&gt;"*) and optional notes.
+4. **Build bundle (N PDFs).** CLAW reads each source from the vault,
+   merges them with pdf-lib, prepends a cover page and a table of
+   contents (each entry showing the source name, page range, and the
+   source's SHA-256 fingerprint), and saves the merged PDF back into
+   the vault as a new Record of Appeal document. The originals are
+   untouched.
+5. The new bundle appears in the Bundles list of the case. Click the
+   **eye** icon to read it in-app or the **trash** to remove it (the
+   sources remain).
+
+Bundles are themselves sealed with their own SHA-256 hash and can be
+cryptographically signed (see *§14d Electronic signatures*).
+
+## 14b. Notes pinned to a document
+
+Annotation in CLAW is text-only and lives **alongside** the document
+rather than being painted onto the PDF — so the underlying file's
+SHA-256 seal stays intact.
+
+1. Open any document in the viewer (File Cabinet → eye icon).
+2. Click the **chat bubble** icon at the top right to open the Notes
+   panel.
+3. Click the **+** to compose a note. You can:
+   - Pin to a **specific page** (or leave blank for a whole-document
+     note).
+   - Pick a **colour** (gilt / verified / escalation / blocked / info /
+     neutral) for visual triage.
+4. Notes show your name, timestamp, and edit history. Each note has
+   pencil and trash icons for edit / delete.
+
+Notes are searched by the global search (along with everything else)
+and appear in the audit ledger as `note.create` / `note.update` /
+`note.delete` entries.
+
+## 14c. Draft version history
+
+Every time you save a draft in the Generator (the gilt **Save changes**
+button), CLAW snapshots the full body. Only saves where the body
+actually changed are snapshotted — rename-only and status-only edits
+are skipped so the history stays meaningful.
+
+1. Open any draft in the Generator.
+2. Click the **clock-circle** (history) icon in the toolbar.
+3. The Versions panel slides in showing every snapshot newest-first.
+   Each row shows version number, status, author, timestamp, and the
+   body size.
+4. Click a version to **inspect** its content.
+5. Click the **⇆** icon to enter diff mode, then pick a second
+   version to compare. Added lines glow green; removed lines glow red.
+6. Click **Restore** to revert the live draft to a snapshot. Restore
+   itself is a write, so the live draft is snapshotted as the next
+   version — you never lose history.
+
+## 14d. Electronic signatures
+
+CLAW signs documents with Ed25519. Each user gets a keypair, generated
+the first time they sign anything; the private key never leaves their
+local AppData folder.
+
+### What you can sign
+
+- A **generated draft** — signing moves the draft to *Final* status and
+  binds the signature to the SHA-256 of the draft's body.
+- An **uploaded document** — signature binds to the file's SHA-256
+  (the same seal you see in the viewer).
+- A **bundle** — signature binds to the merged-PDF SHA-256.
+
+### Signing flow
+
+1. Open the item (Generator draft, document viewer, or bundle entry).
+2. Click the **pen-square** icon to open the signatures panel.
+3. Click **Sign**. Pick a **Capacity** (Counsel, Registrar, Judge of
+   Appeal, etc. — defaults to your rank).
+4. **Sign.** CLAW combines the SHA-256, your name, your capacity, and
+   the timestamp into a signing payload; signs it with your private
+   key; and stores the signature + the public key alongside.
+
+### Verifying a signature
+
+Each signature in the panel has a small shield icon. Click it and CLAW
+will:
+
+1. Re-derive the signing payload from the stored facts.
+2. Verify the signature against the stored public key.
+3. **Re-check that the underlying content still matches the SHA-256
+   the signature covers.**
+
+You'll see one of:
+
+- **verified** (green) — signature is authentic *and* the content is
+  byte-identical to what was signed.
+- **content drifted** (orange) — signature is authentic, but the
+  content has been modified since signing.
+- **signature forged** (red) — the signature does not match the public
+  key. Treat as a forgery and escalate.
+
+### Where the keys live
+
+Settings → Data location opens the folder. Inside `claw.db` the
+`user_keys` table holds your PEM-encoded private key. Back this folder
+up like any other CLAW data — losing it invalidates your ability to
+sign as the same identity (verifications of past signatures still
+work, because the public key travels with the signature itself).
+
+## 14e. Sending a document by email
+
+CLAW does not send email itself. It writes an `.eml` file with the
+document attached (base64 in standard MIME multipart) and asks Windows
+to open it. Outlook (or whichever client is registered for `.eml`)
+opens a draft you can edit, address, and send.
+
+1. Open the item (Generator draft or any uploaded document).
+2. Click the **mail** icon.
+3. Fill in **To** / **Cc** / **Subject** / **Body** in the compose
+   modal.
+4. **Open in mail client.** CLAW writes a temp `.eml`, launches it
+   with the OS handler, and the rest of the flow is in your mail
+   client. The audit ledger records that an email export happened;
+   CLAW never sees the final message or its recipient.
+
+If your machine has no default mail client registered, the dialog will
+report the OS error. The temp `.eml` path is logged in the audit entry
+so you can still locate it manually.
+
 ## 15. Keyboard shortcuts and small conveniences
 
 - **Ctrl+K** anywhere in CLAW — jump to the global search page.
@@ -1051,10 +1187,17 @@ files.
 | Find a phrase **inside** a PDF or Word document      | Sidebar → Search (Inside-document hits)     |
 | Re-verify a document's SHA-256 seal in-app           | File Cabinet → eye → shield-? icon          |
 | Ask KIMI about a specific case's file                | Agent → link thread to case → ask           |
+| **Assemble a Record of Appeal bundle (merge PDFs)**  | File Cabinet → case → Bundles → Assemble    |
+| **Annotate / pin a note to a document or page**      | File Cabinet → eye → notes icon → +         |
+| **Scroll back through every saved version of a draft** | Generator → open draft → history icon     |
+| **Diff two versions of a draft**                     | Generator → versions panel → ⇆ icon + pick 2nd version |
+| **Cryptographically sign a draft / document / bundle** | Open the item → signatures icon → Sign     |
+| **Verify someone else's signature**                  | Signatures panel → shield icon on the signature |
+| **Email a draft or document to colleagues**          | Open the item → mail icon → fill in mail-client draft |
 
 ---
 
-**Court of Appeal, Jamaica · CLAW v2.5.0**
+**Court of Appeal, Jamaica · CLAW v2.6.0**
 For technical support, see *§14 Troubleshooting* first, then escalate
 to your system administrator. The source code and the change log live
 at <https://github.com/Machell1/Sanique-workflow>.

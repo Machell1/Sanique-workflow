@@ -1,6 +1,7 @@
 const { get } = require('../db/connection.cjs');
 const { newId } = require('../services/hash.cjs');
 const { appendAudit } = require('../services/audit.cjs');
+const { snapshot } = require('./versions.cjs');
 
 const TEMPLATES = {
   memo: {
@@ -50,7 +51,9 @@ function generate(input, actor) {
     entityId: id,
     payload: { doc_type: input.doc_type, title: input.title || tmpl.title },
   });
-  return db.prepare('SELECT * FROM generated_documents WHERE id = ?').get(id);
+  const created = db.prepare('SELECT * FROM generated_documents WHERE id = ?').get(id);
+  snapshot(created, actor);
+  return created;
 }
 
 function listGenerated({ caseId } = {}) {
@@ -77,7 +80,13 @@ function updateGenerated(id, patch, actor) {
     entityId: id,
     payload: { fields: Object.keys(patch) },
   });
-  return db.prepare('SELECT * FROM generated_documents WHERE id = ?').get(id);
+  const updated = db.prepare('SELECT * FROM generated_documents WHERE id = ?').get(id);
+  // Only snapshot if the body actually changed; renaming alone or status-only
+  // changes don't warrant a new version entry.
+  if (patch.content !== undefined && patch.content !== existing.content) {
+    snapshot(updated, actor);
+  }
+  return updated;
 }
 
 function deleteGenerated(id, actor) {

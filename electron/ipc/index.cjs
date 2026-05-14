@@ -9,6 +9,15 @@ const generator = require('./generator.cjs');
 const agent = require('./agent.cjs');
 const dashboard = require('./dashboard.cjs');
 const search = require('./search.cjs');
+const bundles = require('./bundles.cjs');
+const notes = require('./notes.cjs');
+const versions = require('./versions.cjs');
+const signatures = require('./signatures.cjs');
+const email = require('./email.cjs');
+
+// versions module exports `snapshot` as an internal helper; strip it so it
+// is not exposed as an IPC channel.
+const { snapshot: _snapshot, ...versionsHandlers } = versions;
 
 const handlers = {
   ...cases,
@@ -22,6 +31,11 @@ const handlers = {
   ...agent,
   ...dashboard,
   ...search,
+  ...bundles,
+  ...notes,
+  ...versionsHandlers,
+  ...signatures,
+  ...email,
 };
 
 async function dispatch(channel, args) {

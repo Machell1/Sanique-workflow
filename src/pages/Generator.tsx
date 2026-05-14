@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   FileText, Plus, Trash2, Copy, Download, FileType2, Printer,
   Bold, Italic, Heading1, Heading2, List, ListOrdered, Quote, Eye, EyeOff,
+  History as HistoryIcon, PenSquare, Mail,
 } from 'lucide-react';
+import { VersionsPanel } from '../components/versions/VersionsPanel';
+import { SignatureControls } from '../components/signatures/SignatureControls';
+import { EmailComposeModal } from '../components/email/EmailComposeModal';
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Footer, PageNumber,
 } from 'docx';
@@ -32,6 +36,8 @@ export function Generator() {
   const actor = useAppStore((s) => s.currentUser);
   const [createOpen, setCreateOpen] = useState(false);
   const [active, setActive] = useState<GeneratedDocument | null>(null);
+  const [sidePanel, setSidePanel] = useState<'versions' | 'signatures' | null>(null);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const templates = useQuery<Template[]>({
     queryKey: ['generator', 'templates'],
@@ -234,7 +240,7 @@ export function Generator() {
             </div>
           </div>
 
-          <div className="panel flex flex-col lg:col-span-3">
+          <div className={`panel flex flex-col ${sidePanel ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
             {!active ? (
               <EmptyState
                 illustration="/empty-state-upload.svg"
@@ -254,11 +260,34 @@ export function Generator() {
                 onDelete={() => { if (confirm('Delete this draft?')) remove.mutate(active.id); }}
                 onExportTxt={() => exportText(active)}
                 onExportDocx={() => exportDocx(active)}
+                onEmail={() => setEmailOpen(true)}
                 onPrint={() => printDraft()}
+                onToggleVersions={() => setSidePanel(sidePanel === 'versions' ? null : 'versions')}
+                onToggleSignatures={() => setSidePanel(sidePanel === 'signatures' ? null : 'signatures')}
+                versionsOpen={sidePanel === 'versions'}
+                signaturesOpen={sidePanel === 'signatures'}
                 provenanceWillStamp={printProvenance}
               />
             )}
           </div>
+
+          {sidePanel === 'versions' && active && (
+            <VersionsPanel
+              draftId={active.id}
+              onClose={() => setSidePanel(null)}
+              onRestored={() => {
+                // Refresh the active draft and the list
+                qc.invalidateQueries({ queryKey: ['generator'] });
+              }}
+            />
+          )}
+          {sidePanel === 'signatures' && active && (
+            <aside className="h-full panel p-4 overflow-y-auto">
+              <SignatureControls
+                target={{ kind: 'generated', generatedDocumentId: active.id }}
+              />
+            </aside>
+          )}
         </div>
       </PageBody>
 
@@ -275,6 +304,12 @@ export function Generator() {
           }}
         />
       )}
+      {emailOpen && active && (
+        <EmailComposeModal
+          target={{ kind: 'generated', generatedDocumentId: active.id, defaultSubject: active.title }}
+          onClose={() => setEmailOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -287,7 +322,12 @@ function DraftEditor({
   onDelete,
   onExportTxt,
   onExportDocx,
+  onEmail,
   onPrint,
+  onToggleVersions,
+  onToggleSignatures,
+  versionsOpen,
+  signaturesOpen,
   provenanceWillStamp,
 }: {
   draft: GeneratedDocument;
@@ -295,7 +335,12 @@ function DraftEditor({
   onDelete: () => void;
   onExportTxt: () => void;
   onExportDocx: () => void;
+  onEmail: () => void;
   onPrint: () => void;
+  onToggleVersions: () => void;
+  onToggleSignatures: () => void;
+  versionsOpen: boolean;
+  signaturesOpen: boolean;
   provenanceWillStamp: boolean;
 }) {
   const [title, setTitle] = useState(draft.title);
@@ -372,6 +417,15 @@ function DraftEditor({
         </Button>
         <Button size="sm" variant="ghost" onClick={onPrint} title="Print">
           <Printer className="w-3.5 h-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onEmail} title="Send by email">
+          <Mail className="w-3.5 h-3.5" />
+        </Button>
+        <Button size="sm" variant={versionsOpen ? 'gilt' : 'ghost'} onClick={onToggleVersions} title="Version history">
+          <HistoryIcon className="w-3.5 h-3.5" />
+        </Button>
+        <Button size="sm" variant={signaturesOpen ? 'gilt' : 'ghost'} onClick={onToggleSignatures} title="Signatures">
+          <PenSquare className="w-3.5 h-3.5" />
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setPreviewOnly((p) => !p)} title={previewOnly ? 'Show source' : 'Hide source'}>
           {previewOnly ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}

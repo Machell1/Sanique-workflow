@@ -163,6 +163,77 @@ export interface Setting {
   _masked?: boolean;
 }
 
+export interface Bundle {
+  id: string;
+  output_document_id: string | null;
+  case_id: string | null;
+  title: string;
+  source_documents: { document_id: string; page_count: number | null; order: number }[];
+  page_count: number | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: number;
+  output_filename?: string | null;
+  output_sha256?: string | null;
+  output_size?: number | null;
+  case_number?: string | null;
+  case_title?: string | null;
+}
+
+export interface DocumentNote {
+  id: string;
+  document_id: string;
+  case_id: string | null;
+  page: number | null;
+  body: string;
+  color: 'gilt' | 'verified' | 'escalation' | 'blocked' | 'info' | 'neutral';
+  created_by: string | null;
+  created_at: number;
+  updated_at: number;
+  author_name?: string | null;
+  document_name?: string | null;
+}
+
+export interface DraftVersionSummary {
+  id: string;
+  version_no: number;
+  title: string;
+  status: string;
+  saved_by: string | null;
+  saved_at: number;
+  author_name: string | null;
+  body_chars: number;
+}
+
+export interface DraftVersionDetail extends DraftVersionSummary {
+  draft_id: string;
+  content: string;
+}
+
+export interface DocumentSignature {
+  id: string;
+  document_id: string | null;
+  generated_document_id: string | null;
+  bundle_id: string | null;
+  signed_by: string;
+  signer_name: string;
+  signer_role: string | null;
+  content_sha256: string;
+  signature_b64: string;
+  public_key_pem: string;
+  signed_at: number;
+}
+
+export interface SignatureVerification {
+  signature_id: string;
+  signature_valid: boolean;
+  content_unchanged: boolean | null;
+  signer_name: string;
+  signer_role: string | null;
+  signed_at: number;
+  public_key_fingerprint: string;
+}
+
 export interface DashboardSnapshot {
   cases: { total: number; open: number; reserved: number; judgment_pending: number };
   upcomingEvents: CalendarEvent[];

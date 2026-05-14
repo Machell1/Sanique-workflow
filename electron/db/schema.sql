@@ -153,6 +153,92 @@ CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_verifications_case ON verifications(case_id);
 CREATE INDEX IF NOT EXISTS idx_agent_messages_thread ON agent_messages(thread_id);
 
+-- v2.6.0 schema additions ---------------------------------------------------
+
+-- Compound PDFs produced by merging multiple source documents (e.g. Record
+-- of Appeal). The output is itself a `documents` row; this table records
+-- which sources produced it, in order.
+CREATE TABLE IF NOT EXISTS bundles (
+  id TEXT PRIMARY KEY,
+  output_document_id TEXT REFERENCES documents(id) ON DELETE SET NULL,
+  case_id TEXT REFERENCES cases(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  source_documents TEXT NOT NULL, -- JSON array of {document_id, page_count}
+  page_count INTEGER,
+  notes TEXT,
+  created_by TEXT REFERENCES users(id),
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_bundles_case ON bundles(case_id);
+
+-- Every save of a generated document snapshots its full content here so
+-- the lawyer can scroll back to yesterday's wording or diff two versions.
+CREATE TABLE IF NOT EXISTS draft_versions (
+  id TEXT PRIMARY KEY,
+  draft_id TEXT NOT NULL REFERENCES generated_documents(id) ON DELETE CASCADE,
+  version_no INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  status TEXT NOT NULL,
+  saved_by TEXT REFERENCES users(id),
+  saved_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_draft_versions ON draft_versions(draft_id, version_no);
+
+-- Text notes the user pins to a document (whole-doc or per-page).
+-- These are CLAW's first-pass annotation system; not a paint-on-PDF
+-- replacement, but a structured way to record observations without
+-- modifying the underlying file (which would break its SHA-256 seal).
+CREATE TABLE IF NOT EXISTS document_notes (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  case_id TEXT REFERENCES cases(id) ON DELETE SET NULL,
+  page INTEGER, -- NULL = whole-document note
+  body TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT 'gilt' CHECK (color IN ('gilt','verified','escalation','blocked','info','neutral')),
+  created_by TEXT REFERENCES users(id),
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_document_notes_doc ON document_notes(document_id);
+
+-- Per-user Ed25519 keypair. Generated on first use of the signing
+-- feature; private key stays on this machine; public key travels with
+-- every signed document so anyone with the public key can verify the
+-- signature (a small standalone verifier ships with the repo).
+CREATE TABLE IF NOT EXISTS user_keys (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  public_key_pem TEXT NOT NULL,
+  private_key_pem TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+-- A cryptographic signature affixed to a document (uploaded, generated,
+-- or bundle). The signed payload is the content's SHA-256 plus the
+-- signer's name plus the timestamp; the signature itself is base64
+-- Ed25519 over that payload.
+CREATE TABLE IF NOT EXISTS document_signatures (
+  id TEXT PRIMARY KEY,
+  document_id TEXT REFERENCES documents(id) ON DELETE CASCADE,
+  generated_document_id TEXT REFERENCES generated_documents(id) ON DELETE CASCADE,
+  bundle_id TEXT REFERENCES bundles(id) ON DELETE CASCADE,
+  signed_by TEXT NOT NULL REFERENCES users(id),
+  signer_name TEXT NOT NULL,
+  signer_role TEXT,
+  content_sha256 TEXT NOT NULL,
+  signature_b64 TEXT NOT NULL,
+  public_key_pem TEXT NOT NULL,
+  signed_at INTEGER NOT NULL,
+  CHECK (
+    (document_id IS NOT NULL AND generated_document_id IS NULL AND bundle_id IS NULL) OR
+    (document_id IS NULL AND generated_document_id IS NOT NULL AND bundle_id IS NULL) OR
+    (document_id IS NULL AND generated_document_id IS NULL AND bundle_id IS NOT NULL)
+  )
+);
+CREATE INDEX IF NOT EXISTS idx_signatures_document ON document_signatures(document_id);
+CREATE INDEX IF NOT EXISTS idx_signatures_generated ON document_signatures(generated_document_id);
+CREATE INDEX IF NOT EXISTS idx_signatures_bundle ON document_signatures(bundle_id);
+
 -- ─── Full-text search (FTS5) ───
 -- Each FTS table mirrors the searchable columns of its source table.
 -- Triggers keep them in sync on INSERT / UPDATE / DELETE so we never serve

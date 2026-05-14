@@ -118,6 +118,46 @@ export const api = {
   search: {
     global: (query: string, limit = 12) => invoke('search:global', { query, limit }),
   },
+  // Bundles (Record of Appeal assembly)
+  bundles: {
+    list: (params?: { caseId?: string }) => invoke('bundles:list', params),
+    get: (id: string) => invoke('bundles:get', { id }),
+    create: (input: any, actor?: any) => invoke('bundles:create', { ...input, actor }),
+    delete: (id: string, actor?: any) => invoke('bundles:delete', { id, actor }),
+  },
+  // Document notes
+  notes: {
+    list: (params?: { documentId?: string; caseId?: string }) => invoke('notes:list', params),
+    create: (input: any, actor?: any) => invoke('notes:create', { ...input, actor }),
+    update: (id: string, patch: any, actor?: any) => invoke('notes:update', { id, patch, actor }),
+    delete: (id: string, actor?: any) => invoke('notes:delete', { id, actor }),
+  },
+  // Draft version history
+  versions: {
+    list: (draftId: string) => invoke('versions:list', { draftId }),
+    get: (id: string) => invoke('versions:get', { id }),
+    restore: (id: string, actor?: any) => invoke('versions:restore', { id, actor }),
+  },
+  // E-signatures
+  signatures: {
+    publicKey: (userId: string) => invoke('signatures:publicKey', { userId }),
+    signGenerated: (generatedDocumentId: string, signerRole?: string, actor?: any) =>
+      invoke('signatures:signGenerated', { generatedDocumentId, signerRole, actor }),
+    signUploaded: (documentId: string, signerRole?: string, actor?: any) =>
+      invoke('signatures:signUploaded', { documentId, signerRole, actor }),
+    signBundle: (bundleId: string, signerRole?: string, actor?: any) =>
+      invoke('signatures:signBundle', { bundleId, signerRole, actor }),
+    list: (params: { documentId?: string; generatedDocumentId?: string; bundleId?: string }) =>
+      invoke('signatures:list', params),
+    verify: (id: string) => invoke('signatures:verify', { id }),
+  },
+  // Email export
+  email: {
+    exportDocument: (input: { documentId: string; to?: string; cc?: string; subject?: string; body?: string }, actor?: any) =>
+      invoke('email:exportDocument', { ...input, actor }),
+    exportGenerated: (input: { generatedDocumentId: string; to?: string; cc?: string; subject?: string; body?: string; format?: string }, actor?: any) =>
+      invoke('email:exportGenerated', { ...input, actor }),
+  },
 };
 
 export { isElectron };

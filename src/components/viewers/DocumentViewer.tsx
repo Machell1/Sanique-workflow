@@ -1,7 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import mammoth from 'mammoth';
 import DOMPurify from 'dompurify';
-import { ExternalLink, ShieldCheck, X, ShieldAlert, ShieldQuestion, Search as SearchIcon } from 'lucide-react';
+import { ExternalLink, ShieldCheck, X, ShieldAlert, ShieldQuestion, Search as SearchIcon, MessageSquare, Mail, PenSquare } from 'lucide-react';
+import { NotesPanel } from '../notes/NotesPanel';
+import { SignatureControls } from '../signatures/SignatureControls';
 import { api } from '../../lib/api';
 import { extractAndIndex } from '../../lib/extract';
 import { Button } from '../ui/Button';
@@ -15,6 +17,7 @@ interface Props {
   doc: CourtDocument;
   onClose: () => void;
   onProvenance?: () => void;
+  onEmail?: () => void;
 }
 
 function detectKind(doc: CourtDocument): 'pdf' | 'docx' | 'image' | 'text' | 'unsupported' {
@@ -31,12 +34,13 @@ function detectKind(doc: CourtDocument): 'pdf' | 'docx' | 'image' | 'text' | 'un
   return 'unsupported';
 }
 
-export function DocumentViewer({ doc, onClose, onProvenance }: Props) {
+export function DocumentViewer({ doc, onClose, onProvenance, onEmail }: Props) {
   const kind = useMemo(() => detectKind(doc), [doc]);
   const [verifyState, setVerifyState] = useState<'idle' | 'checking' | 'match' | 'mismatch' | 'missing'>('idle');
   const [indexState, setIndexState] = useState<'idle' | 'extracting' | 'indexed' | 'failed'>(
     doc.content_indexed_at ? 'indexed' : 'idle'
   );
+  const [sidePanel, setSidePanel] = useState<'notes' | 'signatures' | null>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -100,6 +104,27 @@ export function DocumentViewer({ doc, onClose, onProvenance }: Props) {
               <ShieldCheck className="w-4 h-4" />
             </Button>
           )}
+          {onEmail && (
+            <Button size="sm" variant="ghost" onClick={onEmail} title="Send by email">
+              <Mail className="w-4 h-4" />
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant={sidePanel === 'notes' ? 'gilt' : 'ghost'}
+            onClick={() => setSidePanel(sidePanel === 'notes' ? null : 'notes')}
+            title="Notes"
+          >
+            <MessageSquare className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant={sidePanel === 'signatures' ? 'gilt' : 'ghost'}
+            onClick={() => setSidePanel(sidePanel === 'signatures' ? null : 'signatures')}
+            title="Signatures"
+          >
+            <PenSquare className="w-4 h-4" />
+          </Button>
           <Button
             size="sm"
             variant="ghost"
@@ -117,12 +142,22 @@ export function DocumentViewer({ doc, onClose, onProvenance }: Props) {
         </div>
       </header>
 
-      <div className="flex-1 overflow-hidden">
-        {kind === 'pdf' && <PdfPane id={doc.id} />}
-        {kind === 'docx' && <DocxPane id={doc.id} />}
-        {kind === 'image' && <ImagePane id={doc.id} alt={doc.original_name} />}
-        {kind === 'text' && <TextPane id={doc.id} />}
-        {kind === 'unsupported' && <UnsupportedPane doc={doc} />}
+      <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden">
+          {kind === 'pdf' && <PdfPane id={doc.id} />}
+          {kind === 'docx' && <DocxPane id={doc.id} />}
+          {kind === 'image' && <ImagePane id={doc.id} alt={doc.original_name} />}
+          {kind === 'text' && <TextPane id={doc.id} />}
+          {kind === 'unsupported' && <UnsupportedPane doc={doc} />}
+        </div>
+        {sidePanel === 'notes' && (
+          <NotesPanel documentId={doc.id} caseId={doc.case_id} />
+        )}
+        {sidePanel === 'signatures' && (
+          <aside className="h-full w-80 shrink-0 border-l border-white/10 bg-obsidian-900 p-4 overflow-y-auto">
+            <SignatureControls target={{ kind: 'uploaded', documentId: doc.id }} />
+          </aside>
+        )}
       </div>
     </div>
   );
