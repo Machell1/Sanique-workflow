@@ -103,9 +103,9 @@ const actor = currentUser;
   // ─── Users ────────────────────────────────────────────────────────
   let secondUserId;
   await group('Users', async () => {
-    await check('users:list seeded users', () => {
+    await check('users:list returns only the seeded owner', () => {
       const list = settings['users:list']();
-      return list.length >= 6;
+      return list.length === 1 && list[0].is_current === 1;
     });
     await check('users:create new user', () => {
       const u = settings['users:create']({
@@ -134,9 +134,9 @@ const actor = currentUser;
   // ─── Cases ────────────────────────────────────────────────────────
   let caseId;
   await group('Cases', async () => {
-    await check('cases:list returns seeded cases', () => {
+    await check('cases:list starts empty', () => {
       const all = cases['cases:list']({});
-      return all.length >= 4;
+      return all.length === 0;
     });
     await check('cases:create', () => {
       const c = cases['cases:create']({
@@ -165,9 +165,9 @@ const actor = currentUser;
       const c = cases['cases:update']({ id: caseId, patch: { status: 'reserved' }, actor });
       return c.status === 'reserved';
     });
-    await check('cases:stats', () => {
+    await check('cases:stats counts the one we just created', () => {
       const s = cases['cases:stats']();
-      return s.total >= 5;
+      return s.total === 1;
     });
   });
 
@@ -549,9 +549,11 @@ const actor = currentUser;
       const list = audit['audit:list']({ limit: 5 });
       return list.length === 5;
     });
-    await check('audit:count', () => {
+    await check('audit:count reflects all the operations the harness ran', () => {
       const n = audit['audit:count']({});
-      return n >= 50;
+      // Conservative — the harness writes ~70+ audit entries by this point;
+      // anything substantially less means a code path stopped emitting.
+      return n >= 40;
     });
     await check('audit:verify reports intact chain', () => {
       const r = audit['audit:verify']();
@@ -650,7 +652,7 @@ const actor = currentUser;
     await check('dashboard:snapshot returns full payload', () => {
       const s = dashboard['dashboard:snapshot']();
       return (
-        s.cases.total >= 5 &&
+        s.cases.total >= 1 &&
         s.upcomingEvents.length >= 1 &&
         s.auditChain.ok === true
       );
