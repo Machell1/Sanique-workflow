@@ -43,6 +43,8 @@ export interface CourtDocument {
   uploaded_at: number;
   storage_path: string;
   notes: string | null;
+  content_indexed_at: number | null;
+  content_pages: number | null;
 }
 
 export type EventType = 'hearing' | 'case_management' | 'judgment_delivery' | 'admin' | 'deadline';

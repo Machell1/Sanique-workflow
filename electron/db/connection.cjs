@@ -18,6 +18,14 @@ function init(userDataPath) {
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   db.exec(schema);
 
+  // Migrations for columns added after the original schema (idempotent).
+  try {
+    db.exec('ALTER TABLE documents ADD COLUMN content_indexed_at INTEGER');
+  } catch (e) { /* already exists */ }
+  try {
+    db.exec('ALTER TABLE documents ADD COLUMN content_pages INTEGER');
+  } catch (e) { /* already exists */ }
+
   // Record initial schema version
   const row = db.prepare('SELECT MAX(version) AS v FROM schema_version').get();
   if (!row || row.v == null) {

@@ -1,13 +1,14 @@
 import { useEffect, useState, useMemo } from 'react';
 import mammoth from 'mammoth';
 import DOMPurify from 'dompurify';
-import { ExternalLink, Download, ShieldCheck, X } from 'lucide-react';
+import { ExternalLink, ShieldCheck, X, ShieldAlert, ShieldQuestion, Search as SearchIcon } from 'lucide-react';
 import { api } from '../../lib/api';
+import { extractAndIndex } from '../../lib/extract';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Spinner } from '../ui/Spinner';
 import { fmtBytes, fmtDateTime } from '../../lib/format';
-import { CATEGORY_LABELS, shortHash } from '../../lib/utils';
+import { CATEGORY_LABELS, shortHash, sha256Hex } from '../../lib/utils';
 import type { CourtDocument } from '../../lib/types';
 
 interface Props {
@@ -32,6 +33,10 @@ function detectKind(doc: CourtDocument): 'pdf' | 'docx' | 'image' | 'text' | 'un
 
 export function DocumentViewer({ doc, onClose, onProvenance }: Props) {
   const kind = useMemo(() => detectKind(doc), [doc]);
+  const [verifyState, setVerifyState] = useState<'idle' | 'checking' | 'match' | 'mismatch' | 'missing'>('idle');
+  const [indexState, setIndexState] = useState<'idle' | 'extracting' | 'indexed' | 'failed'>(
+    doc.content_indexed_at ? 'indexed' : 'idle'
+  );
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -40,6 +45,33 @@ export function DocumentViewer({ doc, onClose, onProvenance }: Props) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // Lazy text extraction for documents that haven't been indexed yet.
+  // Only attempt for kinds we know how to extract; let the user trigger
+  // for "unsupported" types by reopening after manual conversion.
+  useEffect(() => {
+    if (doc.content_indexed_at) return;
+    if (kind !== 'pdf' && kind !== 'docx' && kind !== 'text') return;
+    setIndexState('extracting');
+    extractAndIndex(doc, api).then((ok) => setIndexState(ok ? 'indexed' : 'failed'));
+  }, [doc.id, doc.content_indexed_at, kind]);
+
+  async function reverify() {
+    setVerifyState('checking');
+    try {
+      const raw: any = await api.documents.readBytes(doc.id);
+      const bytes = atob(raw.base64);
+      // Re-hash the bytes and compare to the stored seal
+      const buf = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+      const digest = await crypto.subtle.digest('SHA-256', buf);
+      const hex = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+      setVerifyState(hex === doc.sha256 ? 'match' : 'mismatch');
+    } catch (e: any) {
+      if (String(e?.message || e).includes('missing')) setVerifyState('missing');
+      else setVerifyState('mismatch');
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-obsidian-950">
@@ -52,8 +84,17 @@ export function DocumentViewer({ doc, onClose, onProvenance }: Props) {
             </div>
           </div>
           <Badge tone="gilt" className="font-mono text-[10px]">{shortHash(doc.sha256, 14)}</Badge>
+          {indexState === 'extracting' && <Badge tone="info"><Spinner /> indexing</Badge>}
+          {indexState === 'indexed' && <Badge tone="verified"><SearchIcon className="w-3 h-3" /> searchable</Badge>}
+          {indexState === 'failed' && <Badge tone="escalation">not indexed</Badge>}
+          {verifyState === 'match' && <Badge tone="verified"><ShieldCheck className="w-3 h-3" /> seal matches</Badge>}
+          {verifyState === 'mismatch' && <Badge tone="blocked"><ShieldAlert className="w-3 h-3" /> seal BROKEN</Badge>}
+          {verifyState === 'missing' && <Badge tone="blocked">file missing</Badge>}
         </div>
         <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" onClick={reverify} title="Re-verify the SHA-256 seal against the file on disk">
+            {verifyState === 'checking' ? <Spinner /> : <ShieldQuestion className="w-4 h-4" />}
+          </Button>
           {onProvenance && (
             <Button size="sm" variant="ghost" onClick={onProvenance} title="Save provenance certificate">
               <ShieldCheck className="w-4 h-4" />

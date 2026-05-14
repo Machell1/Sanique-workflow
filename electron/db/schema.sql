@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS documents (
   uploaded_by TEXT REFERENCES users(id),
   uploaded_at INTEGER NOT NULL,
   storage_path TEXT NOT NULL,
-  notes TEXT
+  notes TEXT,
+  content_indexed_at INTEGER,
+  content_pages INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS calendar_events (
@@ -163,6 +165,9 @@ CREATE VIRTUAL TABLE IF NOT EXISTS cases_fts USING fts5(
 CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
   original_name, notes, content=''
 );
+CREATE VIRTUAL TABLE IF NOT EXISTS documents_content_fts USING fts5(
+  body, content=''
+);
 CREATE VIRTUAL TABLE IF NOT EXISTS generated_documents_fts USING fts5(
   title, body, content=''
 );
@@ -205,6 +210,8 @@ END;
 CREATE TRIGGER IF NOT EXISTS documents_ad AFTER DELETE ON documents BEGIN
   INSERT INTO documents_fts(documents_fts, rowid, original_name, notes)
   VALUES ('delete', old.oid, old.original_name, coalesce(old.notes,''));
+  INSERT INTO documents_content_fts(documents_content_fts, rowid, body)
+  SELECT 'delete', old.oid, body FROM documents_content_fts WHERE rowid = old.oid;
 END;
 CREATE TRIGGER IF NOT EXISTS documents_au AFTER UPDATE ON documents BEGIN
   INSERT INTO documents_fts(documents_fts, rowid, original_name, notes)

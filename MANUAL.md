@@ -1,7 +1,7 @@
 # CLAW — User Manual
 
 **Commonwealth Legal Automation Workflow Platform**
-Court of Appeal, Jamaica · Version 2.4.0
+Court of Appeal, Jamaica · Version 2.5.0
 
 This manual shows you how to do the day's work in CLAW. It is task-driven —
 look for the heading that matches what you need to do, follow the numbered
@@ -557,7 +557,29 @@ is advisory until you have verified it (use *§7* to do exactly that).
 - Each assistant message carries a confidence badge tied to the same
   Truth Harness as the Verification module.
 
-### 8.3 What KIMI is good at
+### 8.3 KIMI reads the case file when a thread is linked
+
+When you link a conversation to a case (in *§8.1 step 4*, or via the
+pencil → relink action in *§8.5*), KIMI receives a structured case
+brief alongside every prompt: the case number, parties, presiding
+judge, term and roster; the list of every document filed under the
+case; any upcoming hearings; and, when your prompt is specific
+enough, short excerpts from the indexed document bodies that match
+what you asked.
+
+This means questions like *"summarise the appellant's grounds"* or
+*"what authorities are cited in the lower-court judgment?"* work
+without you pasting anything — KIMI already has the relevant text.
+
+Two caveats:
+
+- KIMI only sees documents that are **indexed** (see §11.5). Image-
+  only PDFs, encrypted PDFs, and very recent uploads still being
+  indexed will not appear in its context.
+- The case brief is rebuilt fresh on every message so the model
+  always sees the current state. Nothing is cached.
+
+### 8.4 What KIMI is good at
 
 - *"Summarise the procedural history below in two paragraphs."*
 - *"Distinguish R v. Brown from the Privy Council line on confessions."*
@@ -565,7 +587,7 @@ is advisory until you have verified it (use *§7* to do exactly that).
 - *"What are the leading Jamaican authorities on construction of
   testamentary trust language?"*
 
-### 8.4 What KIMI is bad at
+### 8.5 What KIMI is bad at
 
 - Citing things that do not exist. Always run *§7 Verification* over
   KIMI's output before you put it in a draft.
@@ -574,12 +596,12 @@ is advisory until you have verified it (use *§7* to do exactly that).
 - Procedural directions specific to this Court. KIMI does not know the
   current Practice Direction unless you paste it into the chat.
 
-### 8.5 Rename or relink a conversation
+### 8.6 Rename or relink a conversation
 
 Click the **pencil** icon at the top of the chat pane. You can change
 the title and the linked case. The conversation history is preserved.
 
-### 8.6 Delete a conversation
+### 8.7 Delete a conversation
 
 The trash icon top-right of the chat pane. Audited.
 
@@ -742,6 +764,43 @@ mark-up — for those, open the file in Adobe Reader (PDF) or Word
 (DOCX) via the arrow-out icon. CLAW's audit ledger does not track
 annotations made in external apps.
 
+### 11.4 Re-verifying the seal
+
+The viewer header carries a **shield-with-question-mark** button. Click
+it and CLAW reads the file from disk, recomputes the SHA-256, and
+compares it against the seal recorded when the document was filed:
+
+- **`seal matches`** (green) — every byte is identical to the day it
+  was filed.
+- **`seal BROKEN`** (red) — the bytes on disk do not match the stored
+  hash. Treat the file as compromised and notify your supervisor.
+  Look at the audit log for any `document.update` entries; the file
+  itself should never be edited.
+- **`file missing`** — the vault entry has been deleted from disk
+  outside CLAW. Restore it from your backup.
+
+### 11.5 Searchable document content
+
+From v2.5.0 CLAW also extracts the text from every uploaded PDF and
+Word document so that the global search (see §12) can find phrases
+inside the body, not just the filename. Indexing happens:
+
+- **Automatically after upload.** The Upload page kicks off a
+  background extraction for each new file; you can keep working while
+  it runs.
+- **On first view.** If a document was filed before v2.5.0 (or
+  extraction previously failed), opening it in the viewer triggers a
+  one-time extraction.
+
+A small badge in the viewer header tells you the state:
+
+- `indexing` — extraction is in progress.
+- `searchable` — the body has been indexed; global search can find
+  phrases inside.
+- `not indexed` — extraction failed (encrypted PDF, image-only scan,
+  unsupported encoding). The file remains viewable; you can still
+  search its filename, notes, and category.
+
 ## 12. Global search
 
 The **Search** entry on the sidebar opens a single, fast search box
@@ -754,7 +813,7 @@ that runs across every searchable piece of state CLAW holds:
 - **KIMI CLAW conversations** — every message (user and assistant).
 - **Audit ledger** — action, entity ID, payload, actor name.
 
-### 14.1 How to use it
+### 12.1 How to use it
 
 1. Type two or more characters. Results appear as you type — the last
    word is prefix-matched, so `judg` finds `judgment`, `judging`,
@@ -764,24 +823,37 @@ that runs across every searchable piece of state CLAW holds:
 3. Hits are grouped by kind. Click any row to jump to the module that
    owns it; CLAW lands you on the right page (the Audit module for an
    audit hit, the File Cabinet for a case, and so on).
+4. The **Inside-document** group (only appears when there are hits)
+   highlights the matched phrase inside the actual extracted body of a
+   PDF or Word document. Click through to find the source file in the
+   File Cabinet.
 
-### 14.2 What's indexed when
+### 12.2 What's indexed when
 
 The index is maintained by SQLite triggers, so every new case, every
 upload, every saved draft, every KIMI message and every audit entry
-becomes searchable **immediately** — no batch job to wait for. If you
-upgrade from v2.3 and earlier, the first launch backfills the search
-index across all existing data; it runs once and takes a moment on
-large vaults.
+becomes searchable **immediately** — no batch job to wait for. The
+text inside an uploaded PDF or Word document is extracted in the
+background after upload (see §11.5); large files take a few seconds.
+If you upgrade from a previous version, the first launch backfills
+the search index across all existing data; it runs once and takes a
+moment on large vaults.
 
-### 14.3 What's *not* indexed
+### 12.3 What's *not* indexed
 
-- The **contents of uploaded PDFs and Word documents.** CLAW does not
-  extract text from binary files yet. To find a phrase inside an
-  uploaded PDF, open the file (in-app or in Adobe Reader) and use the
-  PDF's own search.
+- **Image-only PDFs and scanned documents.** CLAW does not perform OCR
+  yet. A PDF that is just photographs of pages produces no searchable
+  text; the document is still viewable, just not searchable by body.
+- **Encrypted PDFs.** The text extractor cannot read inside a
+  password-protected PDF. Remove the password (in Adobe Reader) and
+  re-upload if you need it searchable.
 - Confidence scores and timestamps. Use the dedicated filters in the
   Verification and Audit modules for time-based queries.
+
+### 12.4 Keyboard shortcut
+
+Press **Ctrl+K** anywhere in CLAW to jump straight to the search page
+with the cursor in the box.
 
 ## 13. Backing up and moving CLAW between machines
 
@@ -925,6 +997,7 @@ files.
 
 ## 15. Keyboard shortcuts and small conveniences
 
+- **Ctrl+K** anywhere in CLAW — jump to the global search page.
 - **Ctrl+B** / **Ctrl+I** in the Generator — bold or italic the
   selection.
 - **Ctrl+Enter** in any KIMI CLAW textarea — send the message.
@@ -974,11 +1047,14 @@ files.
 | Read a PDF or Word doc without leaving CLAW          | File Cabinet → document → eye icon          |
 | Print a draft for the bench                          | Generator → open draft → printer icon       |
 | Format a draft (bold, lists, headings, quotations)   | Generator → toolbar, or type Markdown       |
-| Find a phrase across every case / draft / KIMI msg   | Sidebar → Search                            |
+| Find a phrase across every case / draft / KIMI msg   | Sidebar → Search **or Ctrl+K**              |
+| Find a phrase **inside** a PDF or Word document      | Sidebar → Search (Inside-document hits)     |
+| Re-verify a document's SHA-256 seal in-app           | File Cabinet → eye → shield-? icon          |
+| Ask KIMI about a specific case's file                | Agent → link thread to case → ask           |
 
 ---
 
-**Court of Appeal, Jamaica · CLAW v2.4.0**
+**Court of Appeal, Jamaica · CLAW v2.5.0**
 For technical support, see *§14 Troubleshooting* first, then escalate
 to your system administrator. The source code and the change log live
 at <https://github.com/Machell1/Sanique-workflow>.

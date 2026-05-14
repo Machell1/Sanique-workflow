@@ -36,6 +36,8 @@ export const api = {
     delete: (id: string, actor?: any) => invoke('documents:delete', { id, actor }),
     resolve: (id: string) => invoke('documents:resolve', { id }),
     readBytes: (id: string) => invoke('documents:readBytes', { id }),
+    indexText: (id: string, text: string, pages?: number, actor?: any) =>
+      invoke('documents:indexText', { id, text, pages, actor }),
   },
   // Workflow
   workflow: {

@@ -123,6 +123,30 @@ function openDocument(id) {
   return { path: fullPath, exists: fs.existsSync(fullPath) };
 }
 
+function indexText({ id, text, pages }, actor) {
+  const db = get();
+  const doc = getDocument(id);
+  if (!doc) throw new Error('Document not found');
+  const now = Date.now();
+  // Replace any existing FTS row for this document
+  db.prepare('INSERT INTO documents_content_fts(documents_content_fts, rowid, body) SELECT \'delete\', rowid, body FROM documents_content_fts WHERE rowid = (SELECT oid FROM documents WHERE id = ?)').run(id);
+  const oidRow = db.prepare('SELECT oid AS oid FROM documents WHERE id = ?').get(id);
+  if (!oidRow) throw new Error('Document oid missing');
+  if (text && text.trim().length > 0) {
+    db.prepare('INSERT INTO documents_content_fts(rowid, body) VALUES (?, ?)').run(oidRow.oid, text);
+  }
+  db.prepare('UPDATE documents SET content_indexed_at = ?, content_pages = ? WHERE id = ?').run(now, pages || null, id);
+  appendAudit({
+    actorId: actor?.id,
+    actorName: actor?.name,
+    action: 'document.index',
+    entityType: 'document',
+    entityId: id,
+    payload: { chars: text ? text.length : 0, pages: pages || null },
+  });
+  return getDocument(id);
+}
+
 function readBytes(id) {
   const doc = getDocument(id);
   if (!doc) throw new Error('Document not found');
@@ -147,4 +171,5 @@ module.exports = {
   'documents:delete': (args) => deleteDocument(args.id, args.actor),
   'documents:resolve': (args) => openDocument(args.id),
   'documents:readBytes': (args) => readBytes(args.id),
+  'documents:indexText': (args) => indexText(args, args.actor),
 };

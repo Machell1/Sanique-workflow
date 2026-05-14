@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, FolderOpen, FileText, Bot, ShieldCheck, History, FileBadge } from 'lucide-react';
+import { Search as SearchIcon, FolderOpen, FileText, Bot, History, FileBadge, FileSearch } from 'lucide-react';
 import { api } from '../lib/api';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
@@ -11,7 +11,7 @@ import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
 
 interface SearchHit {
-  kind: 'case' | 'document' | 'generated' | 'agent_message' | 'audit';
+  kind: 'case' | 'document' | 'document_content' | 'generated' | 'agent_message' | 'audit';
   id: string;
   title: string;
   subtitle: string;
@@ -19,9 +19,10 @@ interface SearchHit {
   route: string;
 }
 
-const KIND_META: Record<SearchHit['kind'], { label: string; icon: React.ReactNode; tone: 'gilt' | 'info' | 'verified' | 'neutral' | 'high' }> = {
+const KIND_META: Record<SearchHit['kind'], { label: string; icon: React.ReactNode; tone: 'gilt' | 'info' | 'verified' | 'neutral' | 'high' | 'escalation' }> = {
   case: { label: 'Case', icon: <FolderOpen className="w-3.5 h-3.5" />, tone: 'gilt' },
   document: { label: 'Document', icon: <FileText className="w-3.5 h-3.5" />, tone: 'info' },
+  document_content: { label: 'Inside document', icon: <FileSearch className="w-3.5 h-3.5" />, tone: 'escalation' },
   generated: { label: 'Draft', icon: <FileBadge className="w-3.5 h-3.5" />, tone: 'verified' },
   agent_message: { label: 'KIMI', icon: <Bot className="w-3.5 h-3.5" />, tone: 'high' },
   audit: { label: 'Audit', icon: <History className="w-3.5 h-3.5" />, tone: 'neutral' },
@@ -49,7 +50,7 @@ export function GlobalSearch() {
   });
 
   const grouped: Record<SearchHit['kind'], SearchHit[]> = {
-    case: [], document: [], generated: [], agent_message: [], audit: [],
+    case: [], document: [], document_content: [], generated: [], agent_message: [], audit: [],
   };
   (data?.results || []).forEach((r) => grouped[r.kind].push(r));
 
@@ -65,7 +66,7 @@ export function GlobalSearch() {
     return html;
   }
 
-  const groupsInOrder: SearchHit['kind'][] = ['case', 'document', 'generated', 'agent_message', 'audit'];
+  const groupsInOrder: SearchHit['kind'][] = ['case', 'document', 'document_content', 'generated', 'agent_message', 'audit'];
   const totalHits = data?.results.length || 0;
 
   return (
@@ -91,7 +92,8 @@ export function GlobalSearch() {
           </div>
           <p className="text-[11px] text-obsidian-400 mt-2">
             Uses SQLite FTS5. Type two or more letters; the last token gets prefix matching so results
-            appear while you're still typing.
+            appear while you're still typing. <strong className="text-obsidian-300">Inside-document</strong> hits
+            search the extracted text of every indexed PDF and Word file in the vault.
           </p>
         </Card>
 
@@ -147,8 +149,14 @@ export function GlobalSearch() {
                         <div className="text-[11px] text-obsidian-300 truncate">{hit.subtitle}</div>
                         {hit.snippet && (
                           <div
-                            className="text-xs text-obsidian-200 mt-1 line-clamp-2"
-                            dangerouslySetInnerHTML={{ __html: highlight(hit.snippet) }}
+                            className="text-xs text-obsidian-200 mt-1 line-clamp-3"
+                            dangerouslySetInnerHTML={{
+                              __html:
+                                hit.kind === 'document_content'
+                                  // FTS5 returns 〘 / 〙 around hits; render as <mark>
+                                  ? escapeHtml(hit.snippet).replace(/〘/g, '<mark class="bg-gilt-500/30 text-gilt-100 rounded px-0.5">').replace(/〙/g, '</mark>')
+                                  : highlight(hit.snippet),
+                            }}
                           />
                         )}
                       </div>

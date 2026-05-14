@@ -155,6 +155,96 @@ async function callOpenAI(apiKey, model, messages) {
   return { content: text, confidence: 0.99, citations: [], mocked: false };
 }
 
+function buildCaseContext(caseId, userQuery) {
+  if (!caseId) return '';
+  const db = get();
+  const c = db.prepare('SELECT * FROM cases WHERE id = ?').get(caseId);
+  if (!c) return '';
+
+  const docs = db
+    .prepare(
+      `SELECT id, original_name, category, uploaded_at, content_indexed_at, content_pages
+       FROM documents WHERE case_id = ? ORDER BY uploaded_at DESC LIMIT 12`
+    )
+    .all(caseId);
+
+  const events = db
+    .prepare(
+      `SELECT title, start_at, event_type FROM calendar_events
+       WHERE case_id = ? AND start_at >= ? ORDER BY start_at ASC LIMIT 6`
+    )
+    .all(caseId, Date.now() - 86400000);
+
+  // Try to find content snippets from this case's documents matching the
+  // latest user message. Strip FTS operators, prefix-match the last word.
+  let snippetBlocks = [];
+  if (userQuery) {
+    const cleaned = String(userQuery).replace(/["()*]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (cleaned.length >= 3) {
+      const tokens = cleaned.split(' ').filter((t) => t.length >= 2).slice(0, 6);
+      if (tokens.length > 0) {
+        const ftsQuery = tokens
+          .map((t, i) => (i === tokens.length - 1 ? `"${t}"*` : `"${t}"`))
+          .join(' ');
+        try {
+          const hits = db
+            .prepare(
+              `SELECT d.original_name,
+                      snippet(documents_content_fts, 0, '<<', '>>', '…', 24) AS snip
+                 FROM documents_content_fts
+                 JOIN documents d ON d.oid = documents_content_fts.rowid
+                WHERE d.case_id = ?
+                  AND documents_content_fts MATCH ?
+                ORDER BY rank LIMIT 4`
+            )
+            .all(caseId, ftsQuery);
+          snippetBlocks = hits.map((h) => `[${h.original_name}]\n${h.snip}`);
+        } catch {
+          /* FTS may fail on adversarial inputs; ignore */
+        }
+      }
+    }
+  }
+
+  const docList = docs.length
+    ? docs
+        .map(
+          (d) =>
+            `- ${d.original_name} (${d.category}${d.content_indexed_at ? `, searchable, ${d.content_pages || '?'} pages` : ', not yet indexed'})`
+        )
+        .join('\n')
+    : '(no documents filed yet)';
+
+  const eventList = events.length
+    ? events
+        .map((e) => `- ${e.event_type.replace('_', ' ')}: ${e.title} (${new Date(e.start_at).toISOString().slice(0, 10)})`)
+        .join('\n')
+    : '(no upcoming events)';
+
+  const snippetSection = snippetBlocks.length
+    ? `\n\nRelevant excerpts from the case file matching the user's question:\n${snippetBlocks.join('\n\n')}`
+    : '';
+
+  return `
+=== CASE CONTEXT ===
+Case ${c.case_number} — ${c.title}
+Type: ${c.case_type} · Status: ${c.status} · Term: ${c.court_term || '—'} · Roster: ${c.roster || '—'}
+Presiding: ${c.presiding_judge || '—'}
+Appellant: ${c.parties_appellant || '—'}
+Respondent: ${c.parties_respondent || '—'}
+${c.description ? `\nDescription: ${c.description}` : ''}
+
+Filed documents (${docs.length}):
+${docList}
+
+Upcoming events (${events.length}):
+${eventList}${snippetSection}
+
+You may reference these facts in your reply. If the user asks about something not in this context, say so plainly rather than guessing.
+=== END CASE CONTEXT ===
+`;
+}
+
 async function sendMessage({ threadId, content }, actor) {
   if (!threadId) throw new Error('threadId required');
   const db = get();
@@ -172,7 +262,9 @@ async function sendMessage({ threadId, content }, actor) {
     .prepare('SELECT role, content FROM agent_messages WHERE thread_id = ? ORDER BY created_at ASC')
     .all(threadId);
 
-  const sysPrompt = getSetting('ai.system_prompt') || 'You are KIMI CLAW, a legal research assistant.';
+  const basePrompt = getSetting('ai.system_prompt') || 'You are KIMI CLAW, a legal research assistant.';
+  const caseContext = buildCaseContext(thread.case_id, content);
+  const sysPrompt = caseContext ? `${basePrompt}\n${caseContext}` : basePrompt;
   const messages = [{ role: 'system', content: sysPrompt }, ...history];
 
   let assistantResponse;

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Upload as UploadIcon, FileText, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { api, isElectron } from '../lib/api';
+import { extractAndIndex } from '../lib/extract';
 import { PageHeader, PageBody } from '../components/layout/AppLayout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -65,12 +66,23 @@ export function UploadPage() {
       }
       return results;
     },
-    onSuccess: (docs) => {
+    onSuccess: async (docs) => {
       if (docs) setRecentlyUploaded((prev) => [...docs, ...prev].slice(0, 8));
       setPickedPaths([]);
       setNotes('');
       qc.invalidateQueries({ queryKey: ['documents'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
+      // Background-index the text of each uploaded document so the search
+      // module can find phrases inside the PDF / DOCX / text body. We do
+      // not block the UI; failures are logged and the document stays
+      // searchable by filename / notes regardless.
+      if (docs) {
+        for (const d of docs) {
+          extractAndIndex(d, api).then((ok) => {
+            if (ok) qc.invalidateQueries({ queryKey: ['documents'] });
+          });
+        }
+      }
     },
   });
 

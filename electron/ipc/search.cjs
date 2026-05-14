@@ -59,7 +59,7 @@ function globalSearch({ query, limit = 12 } = {}) {
     });
   }
 
-  // Documents
+  // Documents (filename / notes)
   const docs = db
     .prepare(
       `SELECT d.id, d.original_name, d.notes, c.case_number
@@ -68,6 +68,7 @@ function globalSearch({ query, limit = 12 } = {}) {
         WHERE documents_fts MATCH @q ORDER BY rank LIMIT @limit`
     )
     .all({ q: ftsQuery, limit });
+  const docHitIds = new Set();
   for (const d of docs) {
     out.push({
       kind: 'document',
@@ -75,6 +76,30 @@ function globalSearch({ query, limit = 12 } = {}) {
       title: d.original_name,
       subtitle: d.case_number || 'unfiled',
       snippet: snippet(d.notes || '', query),
+      route: '/cabinet',
+    });
+    docHitIds.add(d.id);
+  }
+
+  // Documents — content match (extracted PDF/DOCX text)
+  const docContents = db
+    .prepare(
+      `SELECT d.id, d.original_name, d.content_pages, c.case_number,
+              snippet(documents_content_fts, 0, '〘', '〙', '…', 32) AS fts_snippet
+         FROM documents_content_fts
+         JOIN documents d ON d.oid = documents_content_fts.rowid
+         LEFT JOIN cases c ON c.id = d.case_id
+        WHERE documents_content_fts MATCH @q ORDER BY rank LIMIT @limit`
+    )
+    .all({ q: ftsQuery, limit });
+  for (const d of docContents) {
+    if (docHitIds.has(d.id)) continue; // avoid duplicate
+    out.push({
+      kind: 'document_content',
+      id: d.id,
+      title: d.original_name,
+      subtitle: `${d.case_number || 'unfiled'}${d.content_pages ? ' · ' + d.content_pages + ' pages' : ''}`,
+      snippet: (d.fts_snippet || '').replace(/〘/g, '〘').replace(/〙/g, '〙'),
       route: '/cabinet',
     });
   }
