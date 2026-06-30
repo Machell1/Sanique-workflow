@@ -141,7 +141,7 @@ bool BuildSymbolUniverse()
             AddSymbol(s);
         }
      }
-   else
+   else if(InpScanMarketWatch)
      {
       int total = SymbolsTotal(true); // Market Watch only
       for(int i = 0; i < total; i++)
@@ -150,6 +150,10 @@ bool BuildSymbolUniverse()
          if(StringLen(s) > 0)
             AddSymbol(s);
         }
+     }
+   else
+     {
+      Print("InpScanMarketWatch is false and InpSymbolWhitelist is empty - no symbols to trade.");
      }
    return(ArraySize(g_symbols) > 0);
   }
@@ -259,14 +263,13 @@ void ScanSymbol(string symbol, int atrHandle)
    if(!ReadAtr(atrHandle, atr) || atr <= 0.0)
       return;
 
-   double closeRecent = iClose(symbol, InpTimeframe, 1);
-   double closePast   = iClose(symbol, InpTimeframe, InpMomentumBars);
-   double open1       = iOpen(symbol, InpTimeframe, 1);
-   double close1      = iClose(symbol, InpTimeframe, 1);
-   if(closeRecent == 0.0 || closePast == 0.0)
+   double close1    = iClose(symbol, InpTimeframe, 1);
+   double closePast = iClose(symbol, InpTimeframe, InpMomentumBars);
+   double open1     = iOpen(symbol, InpTimeframe, 1);
+   if(close1 == 0.0 || closePast == 0.0)
       return;
 
-   double move = closePast - closeRecent;       // positive => price fell
+   double move = closePast - close1;            // positive => price fell
    double moveAtr = move / atr;
 
    bool fallingFast = (moveAtr >= InpMomentumAtrMult) && (close1 < open1);
@@ -441,6 +444,10 @@ void ManagePendingOrders()
 
       double curPrice = ordInfo.PriceOpen();
 
+      // Preserve the original expiry so trailing never turns a timed order into a GTC one.
+      datetime keepExpiry = (datetime)ordInfo.TimeExpiration();
+      ENUM_ORDER_TYPE_TIME keepType = (keepExpiry > 0) ? ORDER_TIME_SPECIFIED : ORDER_TIME_GTC;
+
       if(type == ORDER_TYPE_BUY_STOP)
         {
          double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
@@ -451,7 +458,7 @@ void ManagePendingOrders()
             double sl = NormalizeDouble(newEntry - stopDist, digits);
             double tp = (InpTakeProfitAtrMult > 0.0)
                         ? NormalizeDouble(newEntry + atr * InpTakeProfitAtrMult, digits) : 0.0;
-            trade.OrderModify(ticket, newEntry, sl, tp, ORDER_TIME_GTC, 0);
+            trade.OrderModify(ticket, newEntry, sl, tp, keepType, keepExpiry);
            }
         }
       else // SELL_STOP
@@ -464,7 +471,7 @@ void ManagePendingOrders()
             double sl = NormalizeDouble(newEntry + stopDist, digits);
             double tp = (InpTakeProfitAtrMult > 0.0)
                         ? NormalizeDouble(newEntry - atr * InpTakeProfitAtrMult, digits) : 0.0;
-            trade.OrderModify(ticket, newEntry, sl, tp, ORDER_TIME_GTC, 0);
+            trade.OrderModify(ticket, newEntry, sl, tp, keepType, keepExpiry);
            }
         }
      }
