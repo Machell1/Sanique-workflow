@@ -31,13 +31,13 @@ def main():
     cost = 0.02
     common = dict(momentum_atr=2.0, momentum_bars=6, stop_atr=1.0, tp_atr=3.0, cost_atr_frac=cost)
 
-    print("=== Baseline vs SESSION-ANCHORED VWAP filter, cost 0.02/side ===")
+    print("=== Permanent AVWAP filter — calibration sweep, cost 0.02/side ===")
     line("Continuation tp3 (baseline, no VWAP)",
          d60, d15, Params(direction="cont", entry_style="stop", **common))
-    line("Continuation + anchored-VWAP filter (buy<VWAP / sell>VWAP)",
-         d60, d15, Params(direction="cont", entry_style="stop", vwap_window=1, **common))
-    line("FADE + anchored-VWAP: buy dip<VWAP, sell rip>VWAP",
-         d60, d15, Params(direction="fade", entry_style="limit", vwap_window=1, **common))
+    for mb in (4, 8, 12, 16):
+        line(f"Continuation + AVWAP, calibrate >= {mb} bars",
+             d60, d15, Params(direction="cont", entry_style="stop",
+                              vwap_window=1, vwap_min_bars=mb, **common))
 
 
 if __name__ == "__main__":

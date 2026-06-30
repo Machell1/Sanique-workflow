@@ -78,25 +78,31 @@ using a **session-anchored VWAP** (cumulative from each day's open, resetting
 every session; tick-volume weighted with an equal-weight fallback where the feed
 has no volume, e.g. Yahoo FX). Cost 0.02/side.
 
+AVWAP also **calibrates**: no trade is taken until `InpVwapMinBars` bars into the
+session (early-session VWAP is unstable). Calibration sweep (continuation entry):
+
 | Variant | IS 60m | OOS 60m (untouched) | 15m |
 | --- | --- | --- | --- |
-| Continuation tp3 (baseline, no VWAP) | +0.042R, t=3.4 | **+0.064R, t=3.4, 12/15** | **+0.132R, t=6.6** |
-| Continuation + anchored-VWAP filter | +0.152R, t=3.2, PF 1.44 | **−0.033R, t=−0.5 (N=260)** | +0.081R, t=1.5 |
-| FADE + anchored-VWAP (buy dip / sell rip) | −0.050R, t=−4.5 | −0.098R, t=−5.7, 1/15 | −0.077R, t=−4.2 |
+| Continuation tp3 (baseline, no AVWAP) | +0.042R, t=3.4 | **+0.064R, t=3.4, 12/15** | **+0.132R, t=6.6** |
+| + AVWAP, calibrate ≥ 4 bars | +0.122R, t=1.6 | −0.076R, t=−0.6 (N=87) | +0.067R, t=1.2 |
+| + AVWAP, calibrate ≥ 8 bars | −0.086R, t=−1.2 | −0.061R, t=−0.4 (N=48) | +0.049R, t=0.9 |
+| + AVWAP, calibrate ≥ 12 bars | −0.069R, t=−0.9 | −0.075R (N=47) | +0.044R, t=0.8 |
+| FADE + AVWAP (buy dip / sell rip) | −0.050R | −0.098R, t=−5.7, 1/15 | −0.077R |
 
 **Findings:**
-- **Pure VWAP mean-reversion (buy dips below / sell rips above as the entry) is a
-  strong loser** out-of-sample (−0.098R, t=−5.7, profitable on 1/15). Fading does
-  not work on these markets.
-- **The anchored-VWAP filter on the continuation entry looks great in-sample**
-  (+0.152R, t=3.2, PF 1.44, tiny drawdown) **but does NOT survive out-of-sample**
-  (OOS 60m −0.033R). It cuts trade count ~16x, and the in-sample shine is most
-  likely small-sample luck — exactly the kind of result this protocol exists to
-  catch. The baseline (no VWAP) remains the statistically robust edge.
-- It is therefore shipped as an **optional, default-off** EA mode
-  (`InpUseVwapFilter`, session-anchored). Honest verdict: in this test it did not
-  improve out-of-sample performance. Re-validate on your real Deriv feed (which
-  has genuine FX tick volume, unlike Yahoo) before relying on it.
+- **Pure VWAP mean-reversion (buy dips / sell rips as the entry) is a strong
+  loser** out-of-sample (−0.098R, t=−5.7, 1/15). Fading does not work here.
+- The AVWAP discount/premium gate **sharply reduces trade count** and, on this
+  data, **does not improve and on 60m hurts** out-of-sample. On 60m the collapse
+  is partly structural — equity-index sessions only have ~7 bars/day, so an
+  8-bar calibration removes almost all index trades. On the bot's real **M15**
+  timeframe (~96 bars/session) calibration ≥ 8 bars (~2 h) leaves ~400 trades and
+  stays mildly positive (≈ +0.05R) though not statistically significant here.
+- **Per the design request, AVWAP is now a permanent part of the strategy**
+  (`InpVwapMinBars` calibration, session-anchored). Honest note: in this Yahoo
+  backtest it did not add a demonstrable edge over the baseline; its real value
+  must be confirmed on a **live Deriv feed**, which has genuine FX tick volume
+  (Yahoo FX has none, so the test fell back to equal-weight VWAP for FX).
   Reproduce with `python vwap_test.py`.
 
 ## Required next step before live trading

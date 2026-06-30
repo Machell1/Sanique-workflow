@@ -55,6 +55,7 @@ class Params:
     long_only: bool = False
     short_only: bool = False
     vwap_window: int = 0         # >0 => session-anchored VWAP filter on (buy below, sell above)
+    vwap_min_bars: int = 8       # don't trade until this many bars into the session (AVWAP calibration)
 
 
 # ---------------------------------------------------------------------------
@@ -100,6 +101,12 @@ def anchored_vwap(df):
     return (cum_pv / cum_v).to_numpy()
 
 
+def session_bar_pos(df):
+    """1-based count of how many bars into the current session (day) each bar is."""
+    day = pd.to_datetime(df["time"]).dt.floor("D")
+    return day.groupby(day).cumcount().to_numpy() + 1
+
+
 def ema(values, period):
     out = np.full_like(values, np.nan)
     if period <= 0 or len(values) == 0:
@@ -125,6 +132,7 @@ def simulate_symbol(df: pd.DataFrame, p: Params, lo: int, hi: int):
     atr = wilder_atr(h, l, c, p.atr_period)
     trend = ema(c, p.trend_ema) if p.trend_ema > 0 else None
     vwap = anchored_vwap(df) if p.vwap_window > 0 else None  # session-anchored (resets daily)
+    sess_pos = session_bar_pos(df) if p.vwap_window > 0 else None
 
     n = len(c)
     mb = p.momentum_bars
@@ -163,8 +171,12 @@ def simulate_symbol(df: pd.DataFrame, p: Params, lo: int, hi: int):
         if p.short_only:
             go_long = False
 
-        # VWAP filter: buy only at a discount (below VWAP), sell only at a premium.
+        # AVWAP filter: wait for the session VWAP to calibrate, then buy only at a
+        # discount (below VWAP) and sell only at a premium (above VWAP).
         if vwap is not None:
+            if sess_pos[i] < p.vwap_min_bars:   # VWAP not calibrated yet this session
+                i += 1
+                continue
             v = vwap[i]
             if np.isfinite(v):
                 if go_long and c[i] > v:

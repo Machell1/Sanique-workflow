@@ -49,16 +49,20 @@ last section of `RESULTS.md`).
 2. **Find a fast mover.** It measures the move over the last `InpMomentumBars`
    bars in **ATR units**; a move ≥ `InpMomentumAtrMult` ATR with an agreeing
    candle qualifies.
-3. **Place a pending STOP in front of price** — falling → **Sell Stop** below
+3. **Anchored VWAP gate (always on).** A session-anchored VWAP (resets each day)
+   must **calibrate** first — no trades until `InpVwapMinBars` bars into the
+   session — then only **buys at a discount** (below AVWAP) and **sells at a
+   premium** (above AVWAP) are permitted.
+4. **Place a pending STOP in front of price** — falling → **Sell Stop** below
    the bid; rising → **Buy Stop** above the ask, as close as the broker allows.
    It is trailed to stay glued to price and auto-cancels after
    `InpPendingExpiryBars`.
-4. **Never let green turn red.** At `InpLockTriggerAtr` ATR of profit the stop
+5. **Never let green turn red.** At `InpLockTriggerAtr` ATR of profit the stop
    jumps to break-even + a small lock buffer, then trails by `InpTrailAtrMult`.
-5. **Cut losses fast** with a tight `InpStopAtrMult` ATR initial stop, and let
+6. **Cut losses fast** with a tight `InpStopAtrMult` ATR initial stop, and let
    the winners reach the `InpTakeProfitAtrMult` ATR target (the part that creates
    the edge). Stagnant trades are force-closed after `InpMaxHoldingBars`.
-6. **Portfolio guard rails** — max concurrent, max trades/day, daily-loss halt,
+7. **Portfolio guard rails** — max concurrent, max trades/day, daily-loss halt,
    drawdown halt, consecutive-loss breaker, spread filter.
 
 ---
@@ -88,7 +92,7 @@ last section of `RESULTS.md`).
 | `InpSyntheticBlock` | Volatility,Crash,Boom,… | Name keywords to skip (synthetics) |
 | `InpMomentumBars` / `InpMomentumAtrMult` | 6 / 2.0 | How big/fast a move must be |
 | `InpTradeBothSides` | true | false = only short falling assets |
-| `InpUseVwapFilter` | false | Only buy below session VWAP (discount) / sell above (premium) |
+| `InpVwapMinBars` | 8 | AVWAP calibration — don't trade until this many bars into the session |
 | `InpVwapMaxBars` | 500 | Safety cap on bars scanned back to the session (day) open |
 | `InpEntryOffsetAtr` | 0.05 | How far in front of price the pending sits |
 | `InpPendingExpiryBars` | 2 | Cancel an untriggered pending after N bars |

@@ -47,9 +47,9 @@ input double InpMomentumAtrMult  = 2.0;   // Move must be >= this many ATRs to c
 input int    InpAtrPeriod        = 14;    // ATR period
 input bool   InpTradeBothSides   = true;  // Trade rallies too (false = only falling assets -> sells)
 
-//--- VWAP discount/premium filter -----------------------------------
-input group "=== VWAP Filter (optional) ==="
-input bool   InpUseVwapFilter    = false; // Only BUY below VWAP (discount) and SELL above VWAP (premium)
+//--- Anchored VWAP (always on, core part of the strategy) -----------
+input group "=== Anchored VWAP (AVWAP) ==="
+input int    InpVwapMinBars       = 8;    // Calibration: don't trade until this many bars into the session
 input int    InpVwapMaxBars       = 500;  // Safety cap: max bars scanned back to the session (day) open
 
 //--- Pending entry ---------------------------------------------------
@@ -280,18 +280,17 @@ void ScanSymbol(string symbol, int atrHandle)
    bool fallingFast = (moveAtr >= InpMomentumAtrMult) && (close1 < open1);
    bool risingFast  = (-moveAtr >= InpMomentumAtrMult) && (close1 > open1);
 
-   // VWAP discount/premium filter: only buy below VWAP, only sell above it.
-   if(InpUseVwapFilter)
-     {
-      double vwap = AnchoredVwap(symbol, InpTimeframe, 1, InpVwapMaxBars);
-      if(vwap > 0.0)
-        {
-         if(risingFast && close1 >= vwap)   // not a discount -> skip the buy
-            risingFast = false;
-         if(fallingFast && close1 <= vwap)  // not a premium -> skip the sell
-            fallingFast = false;
-        }
-     }
+   // Anchored VWAP is a permanent part of the strategy. Wait for it to calibrate
+   // (enough bars into the session), then buy ONLY at a discount (below VWAP) and
+   // sell ONLY at a premium (above VWAP).
+   int sessBars = 0;
+   double vwap = AnchoredVwap(symbol, InpTimeframe, 1, InpVwapMaxBars, sessBars);
+   if(vwap <= 0.0 || sessBars < InpVwapMinBars)
+      return;                              // VWAP not calibrated yet this session
+   if(risingFast && close1 >= vwap)        // not a discount -> no buy
+      risingFast = false;
+   if(fallingFast && close1 <= vwap)       // not a premium -> no sell
+      fallingFast = false;
 
    if(fallingFast)
       PlacePending(symbol, ORDER_TYPE_SELL_STOP, atr);
@@ -603,8 +602,9 @@ bool ReadAtr(int handle, double &value)
 //| Session-anchored VWAP: cumulative from the session (day) open up  |
 //| to bar `shift`, resetting every session. Tick-volume weighted.    |
 //+------------------------------------------------------------------+
-double AnchoredVwap(string symbol, ENUM_TIMEFRAMES tf, int shift, int maxBars)
+double AnchoredVwap(string symbol, ENUM_TIMEFRAMES tf, int shift, int maxBars, int &barsInSession)
   {
+   barsInSession = 0;
    datetime anchorTime = iTime(symbol, tf, shift);
    if(anchorTime == 0)
       return(0.0);
@@ -622,6 +622,7 @@ double AnchoredVwap(string symbol, ENUM_TIMEFRAMES tf, int shift, int maxBars)
       // Stop at the session boundary (new calendar day = new VWAP anchor).
       if(st.day != ref.day || st.mon != ref.mon || st.year != ref.year)
          break;
+      barsInSession++;
       double hi = iHigh(symbol, tf, j);
       double lo = iLow(symbol, tf, j);
       double cl = iClose(symbol, tf, j);
