@@ -657,19 +657,22 @@ void ManageOpenPositions()
       if(sl <= 0.0)
          continue;
 
+      double minLot = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_MIN);
+      double point = SymbolInfoDouble(InpSymbol, SYMBOL_POINT);
       double riskDistance = type == POSITION_TYPE_BUY ? openPrice - sl : sl - openPrice;
       double profitDistance = type == POSITION_TYPE_BUY ? currentPrice - openPrice : openPrice - currentPrice;
-      if(riskDistance <= 0.0 || profitDistance <= 0.0)
-         continue;
+      bool stopAlreadyProtected = type == POSITION_TYPE_BUY ? sl >= openPrice - point : sl <= openPrice + point;
 
-      double rMultiple = profitDistance / riskDistance;
-      double minLot = SymbolInfoDouble(InpSymbol, SYMBOL_VOLUME_MIN);
-      if(rMultiple >= 1.0 && volume >= minLot * 2.0)
+      if(riskDistance > 0.0 && profitDistance > 0.0)
       {
-         double half = NormalizeVolume(volume / 2.0);
-         if(half >= minLot && trade.PositionClosePartial(ticket, half))
+         double rMultiple = profitDistance / riskDistance;
+         if(rMultiple >= 1.0 && !stopAlreadyProtected && volume >= minLot * 2.0)
          {
-            trade.PositionModify(ticket, NormalizePrice(openPrice), NormalizePrice(tp));
+            double half = NormalizeVolume(volume / 2.0);
+            if(half >= minLot && trade.PositionClosePartial(ticket, half))
+            {
+               trade.PositionModify(ticket, NormalizePrice(openPrice), NormalizePrice(tp));
+            }
          }
       }
 
@@ -810,7 +813,7 @@ double NormalizeVolume(const double volume)
 
 string Trim(string value)
 {
-   StringTrimLeft(value);
-   StringTrimRight(value);
+   value = StringTrimLeft(value);
+   value = StringTrimRight(value);
    return value;
 }
