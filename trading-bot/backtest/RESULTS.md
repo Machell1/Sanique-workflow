@@ -111,6 +111,34 @@ On its **native daily timeframe** (60m resampled to D1, ~735 bars/symbol):
 configuration with a positive, out-of-sample edge on this data; the Turtle
 breakout does not beat it here. The EA was left on the momentum entry.
 
+### Full Turtle (pyramiding + N-sizing + ratcheting stops) on EURUSD
+
+`full_turtle_eurusd.py` implements the *complete* system — Donchian entry, N=ATR(20)
+sizing (1 unit = 1% equity per N), pyramiding to 4 units every +0.5N, stops that
+ratchet to 2N from the latest add, and the trailing channel exit — as a compounding
+equity simulation on a single pair (EURUSD, ~2.8 years).
+
+| Timeframe (spread) | System | Trades | Return | CAGR | Max DD | PF | t |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Daily (0.5 pip) | S1 20/10 | 36 | −33.9% | −13.8% | 49.8% | 0.62 | −1.2 |
+| Daily (0.5 pip) | S2 55/20 | 20 | −8.6% | −3.2% | 36.0% | 0.97 | −0.0 |
+| H4 (0.5 pip) | S1 20/10 | 206 | −19.3% | −7.4% | 66.6% | 1.07 | +0.3 |
+| H4 (0.5 pip) | S2 55/20 | 115 | −86.8% | −51.6% | 90.8% | 0.54 | −2.3 |
+| 60m (0.5 pip) | S1 20/10 | 902 | +32.3% | +10.5% | **78.0%** | 1.15 | +1.2 |
+| 60m (1.0 pip) | S1 20/10 | 912 | −85.3% | −49.6% | 95.7% | 1.04 | +0.4 |
+
+**Verdict: full Turtle does not work on EURUSD here.**
+- Daily (its native timeframe) is **negative**, but the sample is tiny (20–37
+  trades) — low statistical power, so read it as "no evidence of edge", not proof.
+- H4 is clearly negative; pyramiding **amplifies** the whipsaw into 67–91% drawdowns.
+- The single positive number (60m, +32%) exists only at an unrealistic 0.5-pip
+  spread, with a **78% drawdown** and an insignificant t=1.2, and **flips to −85%
+  at a 1-pip spread** — that is cost-fragility and noise, not an edge.
+- This matches the well-known reality: EURUSD is a choppy, mean-reverting major,
+  and Turtle needs a **broad, diversified, trending futures portfolio over many
+  years** — not one rangebound FX pair. Win rates of 16–31% with no big trends to
+  pay for them is a losing combination.
+
 ## Required next step before live trading
 
 Re-validate on your **actual Deriv symbols and spreads**. Yahoo data and modelled
