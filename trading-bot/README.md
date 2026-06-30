@@ -1,101 +1,83 @@
-# Deriv MT5 trading bots
+# Deriv MT5 momentum scalper
 
-Two MetaTrader 5 Expert Advisors plus a Python reference implementation.
+A multi-symbol momentum-breakout scalper for MetaTrader 5 / Deriv.
 
-| File | What it is | Use it for |
-| --- | --- | --- |
-| [`mql5/DerivScalperEA.mq5`](mql5/DerivScalperEA.mq5) | **Multi-symbol momentum scalper** | The strategy you asked for: scan every (non-synthetic) symbol on M15, jump on fast movers with pending stop orders, lock profit instantly, cut losses fast. **Primary deliverable.** |
-| [`mql5/XauusdTrendEA.mq5`](mql5/XauusdTrendEA.mq5) | Single-symbol XAUUSD trend EA | A calmer, lower-frequency trend strategy for gold only. |
-| [`python/xauusd_bot.py`](python/xauusd_bot.py) | Python `MetaTrader5` bot | A reference/learning version of the gold trend logic. |
-
----
-
-## Read this before anything else — about the "80% win rate"
-
-You asked for a strategy that locks in green the moment it appears, cuts losers
-just as fast, and reaches an **80% win rate**. Here is the honest engineering
-reality:
-
-- **A high win rate is easy to manufacture; a profitable bot is not.** If you
-  take a tiny profit and run a wider stop, you will win most trades — but the
-  occasional full-stop loss can erase many small wins. Win rate alone tells you
-  nothing about whether you make money.
-- **What actually matters is expectancy:** `win% × avg_win − loss% × avg_loss`.
-  An 80% win rate with an average loss 5× the average win is a *losing* system.
-- **No EA can guarantee 80% wins, including this one.** Markets, spread,
-  slippage and gaps all work against very tight scalps, and Deriv (like every
-  broker) earns the spread on every fill.
-
-This EA is built to give your style the best honest shot:
-- It enters **with** momentum (in front of fast movers) instead of fading it.
-- It ratchets the stop to **break-even+lock the instant the trade is green**, so
-  a winner is very hard to turn into a loser.
-- It uses a **tight initial stop** so losers are cut fast.
-- It keeps **average win ≈ average risk** (default trail/lock), so the math can
-  actually work at a realistic 55–70% hit rate — and if you reach higher in the
-  backtest, great.
-
-**You must validate the real win rate and expectancy yourself in the Strategy
-Tester and on a Deriv demo account before risking money.** If the backtest does
-not show a positive, stable equity curve with acceptable drawdown, do not trade
-it live. Tune the inputs to your account and the symbols you actually trade.
+| File | What it is |
+| --- | --- |
+| [`mql5/DerivScalperEA.mq5`](mql5/DerivScalperEA.mq5) | The Expert Advisor (compile in MetaEditor, run in MT5). |
+| [`DerivScalperEA.md`](DerivScalperEA.md) | Single-file Markdown copy of the EA + setup notes. |
+| [`backtest/`](backtest/) | Reproducible Python backtest harness + the research log (`RESULTS.md`). |
 
 ---
 
-## The scalper strategy (`DerivScalperEA`)
+## Does it have an edge? (honest answer)
 
-Exactly the workflow you described, automated across many symbols:
+I tested this on **real market data** (15 non-synthetic instruments across FX,
+metals, indices and crypto; Yahoo OHLC) with a strict anti-overfit protocol:
+configs are selected on an in-sample slice and confirmed on an untouched
+out-of-sample slice **and** an independent timeframe, in instrument-agnostic
+R-multiples, with costs always swept. Full details and numbers are in
+[`backtest/RESULTS.md`](backtest/RESULTS.md).
 
-1. **Scan the universe.** Every M15 bar the EA loops over all symbols in your
-   Market Watch (or a whitelist you provide). **Synthetic indices are excluded**
-   by name (Volatility, Crash, Boom, Step, Jump, Range Break, Vol over, Hybrid,
-   1HZ, …) so it never trades them.
+**What I found:**
+
+- The original tight-scalp config (1 ATR stop, **1.5 ATR** target) has **no
+  edge** — in-sample expectancy was statistically zero and went negative once
+  costs reached 0.03 ATR/side. A high win rate there still loses money.
+- **Letting winners run (take-profit 3.0 ATR instead of 1.5) produces a real,
+  out-of-sample, continuation edge:** OOS +0.064R/trade (t≈3.4, profitable on
+  12/15 instruments) and +0.13R/trade (t≈6.6) on the independent 15m set. The
+  `fade` (reversion) variant collapsed out-of-sample, confirming continuation is
+  the right direction. **The EA default was changed to `InpTakeProfitAtrMult = 3.0`.**
+- The edge is **small (~0.03–0.06R/trade net) and cost-fragile** — it vanishes
+  around 0.05 ATR/side. On a high-spread instrument or account it will not
+  survive.
+
+**So:** there is a measurable edge, but it is thin and depends on low costs and
+on holding for the bigger move. This is not a guaranteed-profit machine, and an
+80% win rate is not realistic — expectancy, not win rate, is what makes money.
+**Re-validate on your real Deriv symbols/spreads before trading live** (see the
+last section of `RESULTS.md`).
+
+---
+
+## The strategy
+
+1. **Scan the universe.** Every bar the EA loops over all symbols in your Market
+   Watch (or a whitelist). **Synthetic indices are excluded** by name
+   (Volatility, Crash, Boom, Step, Jump, Range Break, Vol over, Hybrid, 1HZ, …).
 2. **Find a fast mover.** It measures the move over the last `InpMomentumBars`
-   bars in **ATR units**. If price fell (or, optionally, rose) by at least
-   `InpMomentumAtrMult` ATRs and the last candle agrees, the symbol qualifies.
-3. **Place a pending STOP "in front" of price.** Falling fast → a **Sell Stop**
-   just below the bid; rising fast → a **Buy Stop** just above the ask. The
-   offset is as small as the broker's minimum-stop rule allows ("as close as
-   possible"). While the order waits, it is **trailed to stay glued to price**
-   and **auto-cancelled** after `InpPendingExpiryBars` if never triggered.
-4. **Never let green turn red.** The moment the position is `InpLockTriggerAtr`
-   ATRs in profit, the stop jumps to **break-even + a small lock buffer** (covers
-   spread), then **trails tightly** (`InpTrailAtrMult` ATR) to capture more.
-5. **Cut losses fast.** The initial stop is a tight `InpStopAtrMult` ATR, and a
-   stagnant trade is force-closed after `InpMaxHoldingBars`.
-6. **Portfolio guard rails.** Max simultaneous trades, max trades/day, daily-loss
-   halt, max-drawdown halt, consecutive-loss circuit breaker and a spread filter.
-
-### Why momentum *continuation* (not reversal)
-
-You said "place a pending order in front" of a rapidly falling asset. That is a
-**continuation** entry — you join the move rather than catch the falling knife.
-That is also what the most repeatable Deriv scalping write-ups use: Buy/Sell
-**Stop** orders beyond the recent extreme with tight risk. Set
-`InpTradeBothSides = false` if you want to trade **only** falling assets (sells).
+   bars in **ATR units**; a move ≥ `InpMomentumAtrMult` ATR with an agreeing
+   candle qualifies.
+3. **Place a pending STOP in front of price** — falling → **Sell Stop** below
+   the bid; rising → **Buy Stop** above the ask, as close as the broker allows.
+   It is trailed to stay glued to price and auto-cancels after
+   `InpPendingExpiryBars`.
+4. **Never let green turn red.** At `InpLockTriggerAtr` ATR of profit the stop
+   jumps to break-even + a small lock buffer, then trails by `InpTrailAtrMult`.
+5. **Cut losses fast** with a tight `InpStopAtrMult` ATR initial stop, and let
+   the winners reach the `InpTakeProfitAtrMult` ATR target (the part that creates
+   the edge). Stagnant trades are force-closed after `InpMaxHoldingBars`.
+6. **Portfolio guard rails** — max concurrent, max trades/day, daily-loss halt,
+   drawdown halt, consecutive-loss breaker, spread filter.
 
 ---
 
 ## Setting it up on Deriv
 
-1. **Use a no-synthetics account.** In Deriv's Trader's Hub create an **MT5
-   Financial** (or **Financial STP**) login. Those accounts contain only forex,
-   metals, indices, crypto and stocks — *no synthetics at all*. (The EA's name
-   blocklist is a second safety net in case synthetics are ever present.)
-2. **Add the symbols you want scanned** to Market Watch (Ctrl+M → right-click →
-   Symbols). The EA only scans what is in Market Watch. Major FX pairs and gold
-   are the most liquid / scalp-friendly.
-3. **Install the EA:** File → Open Data Folder → `MQL5/Experts`, copy
-   `DerivScalperEA.mq5` there, open MetaEditor (F4) and Compile (F7).
-4. **Attach it to one chart** (any symbol; M15 is fine — the EA scans all
-   symbols regardless of which chart it sits on). Tick **Allow Algo Trading** and
-   enable the global **Algo Trading** toolbar button.
-5. **Backtest first.** Strategy Tester → `DerivScalperEA` → model "Every tick
-   based on real ticks". Note: the Strategy Tester runs a **single symbol** at a
-   time, so test your most-traded pairs individually to gauge per-symbol edge;
-   the multi-symbol scanning is a live/forward-test feature.
-6. **Demo forward-test** for a meaningful sample of trades, then go live with the
-   **smallest** risk you can stomach.
+1. **Use a no-synthetics account** — a Deriv **MT5 Financial** (or **Financial
+   STP**) login holds only forex, metals, indices, crypto and stocks. The EA's
+   name blocklist is a second safety net.
+2. **Add the symbols you want scanned** to Market Watch (Ctrl+M). The EA only
+   scans what is there.
+3. **Install:** File → Open Data Folder → `MQL5/Experts`, copy
+   `DerivScalperEA.mq5`, open MetaEditor (F4), Compile (F7).
+4. **Attach to any one chart** (it scans all symbols regardless). Tick **Allow
+   Algo Trading** and enable the global Algo Trading button.
+5. **Backtest first.** The Strategy Tester runs one symbol at a time, so test
+   your main pairs individually; the multi-symbol scan is a live/forward-test
+   feature. The included Python harness backtests a whole basket at once.
+6. **Demo forward-test**, then go live with the **smallest** risk you can stomach.
 
 ### Key inputs
 
@@ -104,13 +86,13 @@ That is also what the most repeatable Deriv scalping write-ups use: Buy/Sell
 | `InpScanMarketWatch` | true | Scan every Market Watch symbol |
 | `InpSymbolWhitelist` | "" | Comma list to scan instead (e.g. `EURUSD,GBPUSD,XAUUSD`) |
 | `InpSyntheticBlock` | Volatility,Crash,Boom,… | Name keywords to skip (synthetics) |
-| `InpMomentumBars` / `InpMomentumAtrMult` | 6 / 2.0 | How big/fast a move must be to qualify |
+| `InpMomentumBars` / `InpMomentumAtrMult` | 6 / 2.0 | How big/fast a move must be |
 | `InpTradeBothSides` | true | false = only short falling assets |
 | `InpEntryOffsetAtr` | 0.05 | How far in front of price the pending sits |
 | `InpPendingExpiryBars` | 2 | Cancel an untriggered pending after N bars |
 | `InpStopAtrMult` | 1.0 | Initial (tight) stop distance |
-| `InpTakeProfitAtrMult` | 1.5 | Fixed TP distance (0 = trail only) |
-| `InpLockTriggerAtr` | 0.25 | Profit (ATR) at which the stop locks |
+| `InpTakeProfitAtrMult` | **3.0** | Target distance — 3.0 lets winners run (backtest-validated) |
+| `InpLockTriggerAtr` | 0.25 | Profit (ATR) at which the stop locks to break-even |
 | `InpTrailAtrMult` | 0.5 | Trailing distance after lock |
 | `InpMaxHoldingBars` | 8 | Force-close a stagnant trade |
 | `InpRiskPercent` | 0.5 | Risk per trade (% of balance) |
@@ -118,25 +100,28 @@ That is also what the most repeatable Deriv scalping write-ups use: Buy/Sell
 | `InpDailyLossLimitPct` / `InpMaxDrawdownPct` | 3 / 15 | Hard halts |
 | `InpMaxSpreadPoints` | 200 | Skip symbols when spread is too wide |
 
-> **Tuning tip for win rate vs expectancy:** raising `InpTakeProfitAtrMult`
-> *down* toward `InpStopAtrMult` and lowering `InpLockTriggerAtr` pushes the win
-> rate up but shrinks average win. Backtest the combination — chase a positive
-> equity curve, not a win-rate number.
+> **Lower-drawdown alternative:** a 2 ATR stop with the 3 ATR target
+> (`InpStopAtrMult = 2.0`) traded a little expectancy for the steadiest curve in
+> testing (profitable on 13/15 instruments, far lower drawdown). Consider it if
+> you prefer smoothness over the tight-stop version.
 
 ---
 
-## XAUUSD trend EA and Python bot
+## Reproducing the backtest
 
-`XauusdTrendEA.mq5` and `python/xauusd_bot.py` implement the earlier, calmer
-gold-only trend strategy (EMA trend + RSI/MACD momentum + ATR pullback, with the
-same risk framework). They remain here as alternatives. The Python bot needs
-Windows + an MT5 terminal (`pip install -r python/requirements.txt`).
+```bash
+cd backtest
+pip install -r requirements.txt
+python fetch_data.py     # pull real OHLC from Yahoo into backtest/data/
+python sweep.py          # in-sample ranking + out-of-sample/holdout checks
+python confirm.py        # before/after of the shipped vs validated config
+```
 
----
+See [`backtest/RESULTS.md`](backtest/RESULTS.md) for the methodology, the full
+numbers, and the caveats (Yahoo data quality, modelled costs, no intrabar path).
 
 ## Broker symbol names
 
-Deriv names forex normally (`EURUSD`, `GBPUSD`, `XAUUSD`) on MT5 Financial
-accounts. If your broker uses suffixes (e.g. `EURUSD.`, `EURUSDm`), the EA still
-works because it scans whatever is in Market Watch — just make sure the
-synthetic blocklist still excludes any synthetic names your account exposes.
+Deriv names forex normally (`EURUSD`, `GBPUSD`, `XAUUSD`). If your broker uses
+suffixes (`EURUSD.`, `EURUSDm`), the EA still works because it scans whatever is
+in Market Watch — just keep the synthetic blocklist accurate for your account.

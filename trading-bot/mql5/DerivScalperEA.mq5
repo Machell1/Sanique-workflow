@@ -57,7 +57,7 @@ input bool   InpTrailPending     = true;  // Keep the pending order glued to pri
 input group "=== Risk & Exits ==="
 input double InpRiskPercent      = 0.5;   // Risk per trade (% of balance)
 input double InpStopAtrMult      = 1.0;   // Initial stop distance (ATR) - tight = fast loss cut
-input double InpTakeProfitAtrMult= 1.5;   // Take-profit distance (ATR), 0 = no fixed TP (rely on trail)
+input double InpTakeProfitAtrMult= 3.0;   // Take-profit distance (ATR). 3.0 = let winners run (backtest-validated); 0 = trail only
 input double InpLockTriggerAtr   = 0.25;  // Once price is this many ATR in profit, lock the trade
 input int    InpLockBufferPoints = 0;     // Extra points locked above break-even (0 = auto: spread+2)
 input double InpTrailAtrMult      = 0.5;  // Trailing distance after lock (ATR)
