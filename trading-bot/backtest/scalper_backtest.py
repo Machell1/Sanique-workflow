@@ -54,6 +54,7 @@ class Params:
     trend_ema: int = 0           # >0 => only trade with the EMA(trend_ema) slope
     long_only: bool = False
     short_only: bool = False
+    vwap_window: int = 0         # >0 => only buy below VWAP (discount), sell above (premium)
 
 
 # ---------------------------------------------------------------------------
@@ -74,6 +75,27 @@ def wilder_atr(high, low, close, period):
     for i in range(period + 1, len(close)):
         atr[i] = atr[i - 1] + alpha * (tr[i] - atr[i - 1])
     return atr
+
+
+def rolling_vwap(high, low, close, volume, window):
+    """Rolling volume-weighted average price over `window` bars.
+
+    Uses real volume where available; for feeds without volume (e.g. Yahoo FX)
+    it falls back to equal weights, i.e. a rolling typical-price average — the
+    same discount/premium notion an MT5 tick-volume VWAP approximates.
+    Causal: bar i uses bars [i-window+1 .. i].
+    """
+    tp = (np.asarray(high, float) + np.asarray(low, float) + np.asarray(close, float)) / 3.0
+    vol = np.asarray(volume, float)
+    if not np.isfinite(vol).any() or np.nansum(vol) <= 0:
+        vol = np.ones_like(tp)
+    vol = np.where(np.isfinite(vol) & (vol > 0), vol, 0.0)
+    pv = pd.Series(tp * vol).rolling(window, min_periods=max(2, window // 2)).sum().to_numpy()
+    vv = pd.Series(vol).rolling(window, min_periods=max(2, window // 2)).sum().to_numpy()
+    out = np.full_like(tp, np.nan)
+    nz = vv > 0
+    out[nz] = pv[nz] / vv[nz]
+    return out
 
 
 def ema(values, period):
@@ -100,6 +122,9 @@ def simulate_symbol(df: pd.DataFrame, p: Params, lo: int, hi: int):
     c = df["close"].to_numpy(float)
     atr = wilder_atr(h, l, c, p.atr_period)
     trend = ema(c, p.trend_ema) if p.trend_ema > 0 else None
+    vwap = (rolling_vwap(h, l, c, df["volume"].to_numpy(float)
+                         if "volume" in df else np.ones(len(c)), p.vwap_window)
+            if p.vwap_window > 0 else None)
 
     n = len(c)
     mb = p.momentum_bars
@@ -137,6 +162,16 @@ def simulate_symbol(df: pd.DataFrame, p: Params, lo: int, hi: int):
             go_short = False
         if p.short_only:
             go_long = False
+
+        # VWAP filter: buy only at a discount (below VWAP), sell only at a premium.
+        if vwap is not None:
+            v = vwap[i]
+            if np.isfinite(v):
+                if go_long and c[i] > v:
+                    go_long = False
+                if go_short and c[i] < v:
+                    go_short = False
+
         if not (go_long or go_short):
             i += 1
             continue

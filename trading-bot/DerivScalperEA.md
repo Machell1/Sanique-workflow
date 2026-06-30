@@ -56,6 +56,8 @@ it can't turn red, trails tightly, and cuts losers fast.
 | `InpSyntheticBlock` | Volatility,Crash,Boom,… | Name keywords to skip (synthetics) |
 | `InpMomentumBars` / `InpMomentumAtrMult` | 6 / 2.0 | How big/fast a move must be |
 | `InpTradeBothSides` | true | false = only short falling assets |
+| `InpUseVwapFilter` | false | Only buy below VWAP (discount) / sell above (premium) |
+| `InpVwapPeriod` | 20 | Rolling VWAP lookback (bars), tick-volume weighted |
 | `InpEntryOffsetAtr` | 0.05 | How far in front of price the pending sits |
 | `InpPendingExpiryBars` | 2 | Cancel an untriggered pending after N bars |
 | `InpStopAtrMult` | 1.0 | Initial (tight) stop distance |
@@ -121,6 +123,11 @@ input int    InpMomentumBars     = 6;     // Lookback bars for the move
 input double InpMomentumAtrMult  = 2.0;   // Move must be >= this many ATRs to count as "rapid"
 input int    InpAtrPeriod        = 14;    // ATR period
 input bool   InpTradeBothSides   = true;  // Trade rallies too (false = only falling assets -> sells)
+
+//--- VWAP discount/premium filter -----------------------------------
+input group "=== VWAP Filter (optional) ==="
+input bool   InpUseVwapFilter    = false; // Only BUY below VWAP (discount) and SELL above VWAP (premium)
+input int    InpVwapPeriod       = 20;    // Rolling VWAP lookback (bars), tick-volume weighted
 
 //--- Pending entry ---------------------------------------------------
 input group "=== Pending Entry ==="
@@ -349,6 +356,19 @@ void ScanSymbol(string symbol, int atrHandle)
 
    bool fallingFast = (moveAtr >= InpMomentumAtrMult) && (close1 < open1);
    bool risingFast  = (-moveAtr >= InpMomentumAtrMult) && (close1 > open1);
+
+   // VWAP discount/premium filter: only buy below VWAP, only sell above it.
+   if(InpUseVwapFilter)
+     {
+      double vwap = VwapValue(symbol, InpTimeframe, InpVwapPeriod, 1);
+      if(vwap > 0.0)
+        {
+         if(risingFast && close1 >= vwap)   // not a discount -> skip the buy
+            risingFast = false;
+         if(fallingFast && close1 <= vwap)  // not a premium -> skip the sell
+            fallingFast = false;
+        }
+     }
 
    if(fallingFast)
       PlacePending(symbol, ORDER_TYPE_SELL_STOP, atr);
@@ -654,6 +674,31 @@ bool ReadAtr(int handle, double &value)
       return(false);
    value = tmp[0];
    return(value > 0.0);
+  }
+
+//+------------------------------------------------------------------+
+//| Tick-volume-weighted VWAP over `period` bars ending at `shift`    |
+//+------------------------------------------------------------------+
+double VwapValue(string symbol, ENUM_TIMEFRAMES tf, int period, int shift)
+  {
+   if(period <= 0)
+      return(0.0);
+   double pv = 0.0, vv = 0.0;
+   for(int j = shift; j < shift + period; j++)
+     {
+      double hi = iHigh(symbol, tf, j);
+      double lo = iLow(symbol, tf, j);
+      double cl = iClose(symbol, tf, j);
+      if(hi <= 0.0 || lo <= 0.0 || cl <= 0.0)
+         continue;
+      double typical = (hi + lo + cl) / 3.0;
+      double vol = (double)iTickVolume(symbol, tf, j);
+      if(vol <= 0.0)
+         vol = 1.0;             // equal-weight fallback if no volume
+      pv += typical * vol;
+      vv += vol;
+     }
+   return(vv > 0.0 ? pv / vv : 0.0);
   }
 
 bool DataReady(string symbol)

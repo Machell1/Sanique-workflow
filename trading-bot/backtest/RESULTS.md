@@ -71,6 +71,33 @@ confirming continuation is the correct direction.
 - `ROBUST` (2 ATR stop) trades a little expectancy for the steadiest curve
   (13/15 instruments, far lower drawdown) and is the safer live starting point.
 
+## VWAP discount/premium filter (`vwap_test.py`)
+
+Tested the rule "only buy below VWAP (discount), only sell above VWAP (premium)"
+two ways (rolling VWAP, tick-volume weighted; equal-weight fallback where the
+feed has no volume, e.g. Yahoo FX). Cost 0.02/side.
+
+| Variant | IS 60m | OOS 60m | 15m |
+| --- | --- | --- | --- |
+| Continuation tp3 (baseline, no VWAP) | +0.042R, t=3.4 | +0.064R, t=3.4, 12/15 | +0.132R, t=6.6 |
+| Continuation **+ VWAP(20) filter** | +0.071R, t=1.2 (N=319) | +0.073R, t=0.7 (N=124) | **+0.221R, t=2.6, PF 1.69** |
+| Continuation + VWAP(50) filter | +0.047R, t=1.6 | −0.017R, t=−0.4 | +0.127R, t=2.7 |
+| **FADE** + VWAP (pure buy-dip/sell-rip) | −0.048R, t=−4.2 | −0.098R, t=−5.7, 1/15 | −0.064R, t=−3.6 |
+
+**Findings:**
+- **Pure VWAP mean-reversion (buy dips below / sell rips above as the entry) is a
+  strong loser** out-of-sample (−0.098R, t=−5.7, profitable on 1/15). Fading does
+  not work on these markets.
+- **As a *filter* on the continuation entry**, "buy only below VWAP / sell only
+  above VWAP" raises per-trade quality (it buys pullbacks-at-a-discount inside
+  momentum instead of chasing): 15m +0.221R, PF 1.69. But it cuts trade count
+  ~25x, so the 60m out-of-sample sample is too small to be statistically
+  significant. It also has much lower drawdown.
+- It is therefore shipped as an **optional, default-off** EA mode
+  (`InpUseVwapFilter`, VWAP period 20). Use it for higher selectivity / lower
+  drawdown, accepting far fewer trades; leave it off for the statistically
+  strongest, higher-frequency edge. Reproduce with `python vwap_test.py`.
+
 ## Required next step before live trading
 
 Re-validate on your **actual Deriv symbols and spreads**. Yahoo data and modelled

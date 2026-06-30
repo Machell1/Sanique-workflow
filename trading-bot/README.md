@@ -88,6 +88,8 @@ last section of `RESULTS.md`).
 | `InpSyntheticBlock` | Volatility,Crash,Boom,… | Name keywords to skip (synthetics) |
 | `InpMomentumBars` / `InpMomentumAtrMult` | 6 / 2.0 | How big/fast a move must be |
 | `InpTradeBothSides` | true | false = only short falling assets |
+| `InpUseVwapFilter` | false | Only buy below VWAP (discount) / sell above (premium) |
+| `InpVwapPeriod` | 20 | Rolling VWAP lookback (bars), tick-volume weighted |
 | `InpEntryOffsetAtr` | 0.05 | How far in front of price the pending sits |
 | `InpPendingExpiryBars` | 2 | Cancel an untriggered pending after N bars |
 | `InpStopAtrMult` | 1.0 | Initial (tight) stop distance |
