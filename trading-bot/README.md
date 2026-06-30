@@ -120,15 +120,6 @@ python confirm.py        # before/after of the shipped vs validated config
 See [`backtest/RESULTS.md`](backtest/RESULTS.md) for the methodology, the full
 numbers, and the caveats (Yahoo data quality, modelled costs, no intrabar path).
 
-## Research: agentic Turtle fund
-
-[`turtle_fund/`](turtle_fund/) is a multi-agent (Selection → Manager → Risk →
-Execution) trend-following "fund" loop, with an optional Claude manager. Its
-README documents an important, honest finding: aggressively *selecting* the best
-few symbols underperforms trading a diversified basket, and de-risking during
-drawdowns guts trend-following. It is a research sandbox (paper mode, large
-drawdowns, regime-dependent), not a profitable system.
-
 ## Broker symbol names
 
 Deriv names forex normally (`EURUSD`, `GBPUSD`, `XAUUSD`). If your broker uses
