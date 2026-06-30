@@ -54,7 +54,7 @@ class Params:
     trend_ema: int = 0           # >0 => only trade with the EMA(trend_ema) slope
     long_only: bool = False
     short_only: bool = False
-    vwap_window: int = 0         # >0 => only buy below VWAP (discount), sell above (premium)
+    vwap_window: int = 0         # >0 => session-anchored VWAP filter on (buy below, sell above)
 
 
 # ---------------------------------------------------------------------------
@@ -77,25 +77,27 @@ def wilder_atr(high, low, close, period):
     return atr
 
 
-def rolling_vwap(high, low, close, volume, window):
-    """Rolling volume-weighted average price over `window` bars.
+def anchored_vwap(df):
+    """Session-anchored VWAP: cumulative VWAP that RESETS at each session (day).
 
-    Uses real volume where available; for feeds without volume (e.g. Yahoo FX)
-    it falls back to equal weights, i.e. a rolling typical-price average — the
-    same discount/premium notion an MT5 tick-volume VWAP approximates.
-    Causal: bar i uses bars [i-window+1 .. i].
+    For each bar, VWAP = sum(typical*vol) / sum(vol) accumulated from the start
+    of that calendar day up to and including the bar (causal). Uses real volume
+    where available; falls back to equal weights for feeds without volume (e.g.
+    Yahoo FX) — the same discount/premium notion an MT5 tick-volume VWAP gives.
     """
-    tp = (np.asarray(high, float) + np.asarray(low, float) + np.asarray(close, float)) / 3.0
-    vol = np.asarray(volume, float)
-    if not np.isfinite(vol).any() or np.nansum(vol) <= 0:
-        vol = np.ones_like(tp)
-    vol = np.where(np.isfinite(vol) & (vol > 0), vol, 0.0)
-    pv = pd.Series(tp * vol).rolling(window, min_periods=max(2, window // 2)).sum().to_numpy()
-    vv = pd.Series(vol).rolling(window, min_periods=max(2, window // 2)).sum().to_numpy()
-    out = np.full_like(tp, np.nan)
-    nz = vv > 0
-    out[nz] = pv[nz] / vv[nz]
-    return out
+    t = pd.to_datetime(df["time"])
+    day = t.dt.floor("D")
+    tp = (df["high"].astype(float) + df["low"].astype(float) + df["close"].astype(float)) / 3.0
+    if "volume" in df:
+        vol = df["volume"].astype(float)
+        vol = vol.where(np.isfinite(vol) & (vol > 0), 0.0)
+        if vol.sum() <= 0:
+            vol = pd.Series(1.0, index=df.index)
+    else:
+        vol = pd.Series(1.0, index=df.index)
+    cum_pv = (tp * vol).groupby(day).cumsum()
+    cum_v = vol.groupby(day).cumsum().replace(0.0, np.nan)
+    return (cum_pv / cum_v).to_numpy()
 
 
 def ema(values, period):
@@ -122,9 +124,7 @@ def simulate_symbol(df: pd.DataFrame, p: Params, lo: int, hi: int):
     c = df["close"].to_numpy(float)
     atr = wilder_atr(h, l, c, p.atr_period)
     trend = ema(c, p.trend_ema) if p.trend_ema > 0 else None
-    vwap = (rolling_vwap(h, l, c, df["volume"].to_numpy(float)
-                         if "volume" in df else np.ones(len(c)), p.vwap_window)
-            if p.vwap_window > 0 else None)
+    vwap = anchored_vwap(df) if p.vwap_window > 0 else None  # session-anchored (resets daily)
 
     n = len(c)
     mb = p.momentum_bars

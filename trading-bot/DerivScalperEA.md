@@ -56,8 +56,8 @@ it can't turn red, trails tightly, and cuts losers fast.
 | `InpSyntheticBlock` | Volatility,Crash,Boom,… | Name keywords to skip (synthetics) |
 | `InpMomentumBars` / `InpMomentumAtrMult` | 6 / 2.0 | How big/fast a move must be |
 | `InpTradeBothSides` | true | false = only short falling assets |
-| `InpUseVwapFilter` | false | Only buy below VWAP (discount) / sell above (premium) |
-| `InpVwapPeriod` | 20 | Rolling VWAP lookback (bars), tick-volume weighted |
+| `InpUseVwapFilter` | false | Only buy below session VWAP (discount) / sell above (premium) |
+| `InpVwapMaxBars` | 500 | Safety cap on bars scanned back to the session (day) open |
 | `InpEntryOffsetAtr` | 0.05 | How far in front of price the pending sits |
 | `InpPendingExpiryBars` | 2 | Cancel an untriggered pending after N bars |
 | `InpStopAtrMult` | 1.0 | Initial (tight) stop distance |
@@ -127,7 +127,7 @@ input bool   InpTradeBothSides   = true;  // Trade rallies too (false = only fal
 //--- VWAP discount/premium filter -----------------------------------
 input group "=== VWAP Filter (optional) ==="
 input bool   InpUseVwapFilter    = false; // Only BUY below VWAP (discount) and SELL above VWAP (premium)
-input int    InpVwapPeriod       = 20;    // Rolling VWAP lookback (bars), tick-volume weighted
+input int    InpVwapMaxBars       = 500;  // Safety cap: max bars scanned back to the session (day) open
 
 //--- Pending entry ---------------------------------------------------
 input group "=== Pending Entry ==="
@@ -360,7 +360,7 @@ void ScanSymbol(string symbol, int atrHandle)
    // VWAP discount/premium filter: only buy below VWAP, only sell above it.
    if(InpUseVwapFilter)
      {
-      double vwap = VwapValue(symbol, InpTimeframe, InpVwapPeriod, 1);
+      double vwap = AnchoredVwap(symbol, InpTimeframe, 1, InpVwapMaxBars);
       if(vwap > 0.0)
         {
          if(risingFast && close1 >= vwap)   // not a discount -> skip the buy
@@ -677,15 +677,28 @@ bool ReadAtr(int handle, double &value)
   }
 
 //+------------------------------------------------------------------+
-//| Tick-volume-weighted VWAP over `period` bars ending at `shift`    |
+//| Session-anchored VWAP: cumulative from the session (day) open up  |
+//| to bar `shift`, resetting every session. Tick-volume weighted.    |
 //+------------------------------------------------------------------+
-double VwapValue(string symbol, ENUM_TIMEFRAMES tf, int period, int shift)
+double AnchoredVwap(string symbol, ENUM_TIMEFRAMES tf, int shift, int maxBars)
   {
-   if(period <= 0)
+   datetime anchorTime = iTime(symbol, tf, shift);
+   if(anchorTime == 0)
       return(0.0);
+   MqlDateTime ref;
+   TimeToStruct(anchorTime, ref);
+
    double pv = 0.0, vv = 0.0;
-   for(int j = shift; j < shift + period; j++)
+   for(int j = shift; j < shift + maxBars; j++)
      {
+      datetime bt = iTime(symbol, tf, j);
+      if(bt == 0)
+         break;
+      MqlDateTime st;
+      TimeToStruct(bt, st);
+      // Stop at the session boundary (new calendar day = new VWAP anchor).
+      if(st.day != ref.day || st.mon != ref.mon || st.year != ref.year)
+         break;
       double hi = iHigh(symbol, tf, j);
       double lo = iLow(symbol, tf, j);
       double cl = iClose(symbol, tf, j);

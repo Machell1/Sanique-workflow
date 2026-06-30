@@ -31,17 +31,13 @@ def main():
     cost = 0.02
     common = dict(momentum_atr=2.0, momentum_bars=6, stop_atr=1.0, tp_atr=3.0, cost_atr_frac=cost)
 
-    print("=== Baseline (validated) vs VWAP variants, cost 0.02/side ===")
+    print("=== Baseline vs SESSION-ANCHORED VWAP filter, cost 0.02/side ===")
     line("Continuation tp3 (baseline, no VWAP)",
          d60, d15, Params(direction="cont", entry_style="stop", **common))
-    line("Continuation + VWAP(20) discount/premium filter",
-         d60, d15, Params(direction="cont", entry_style="stop", vwap_window=20, **common))
-    line("Continuation + VWAP(50) filter",
-         d60, d15, Params(direction="cont", entry_style="stop", vwap_window=50, **common))
-    line("FADE + VWAP(20): buy dip<VWAP, sell rip>VWAP",
-         d60, d15, Params(direction="fade", entry_style="limit", vwap_window=20, **common))
-    line("FADE + VWAP(50): buy dip<VWAP, sell rip>VWAP",
-         d60, d15, Params(direction="fade", entry_style="limit", vwap_window=50, **common))
+    line("Continuation + anchored-VWAP filter (buy<VWAP / sell>VWAP)",
+         d60, d15, Params(direction="cont", entry_style="stop", vwap_window=1, **common))
+    line("FADE + anchored-VWAP: buy dip<VWAP, sell rip>VWAP",
+         d60, d15, Params(direction="fade", entry_style="limit", vwap_window=1, **common))
 
 
 if __name__ == "__main__":
