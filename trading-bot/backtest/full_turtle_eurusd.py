@@ -44,7 +44,8 @@ class Cfg:
     max_units: int = 4
     risk_per_unit: float = 0.01     # 1% of equity per 1N
     s1_filter: bool = True
-    spread_price: float = 0.0001    # per-side cost in price (1 pip on EURUSD)
+    spread_price: float = 0.0001    # per-side cost in price (e.g. 1 pip on EURUSD)
+    cost_atr_frac: float = 0.0      # per-side cost as a fraction of N (auto-scales across instruments)
 
 
 def load_tf(symbol: str, rule: str | None):
@@ -105,7 +106,8 @@ def simulate(df: pd.DataFrame, cfg: Cfg):
                 else:
                     side = 1 if long_b else -1
                     lvl = ent_hi[i] if side > 0 else ent_lo[i]
-                    fill = (max(o[i], lvl) if side > 0 else min(o[i], lvl)) + side * cfg.spread_price
+                    cost_px = cfg.spread_price + cfg.cost_atr_frac * a
+                    fill = (max(o[i], lvl) if side > 0 else min(o[i], lvl)) + side * cost_px
                     pos = {
                         "side": side, "N": a, "eq_open": equity,
                         "units": [(fill, cfg.risk_per_unit)],
@@ -116,19 +118,20 @@ def simulate(df: pd.DataFrame, cfg: Cfg):
             continue
 
         side = pos["side"]
+        cost_px = cfg.spread_price + cfg.cost_atr_frac * pos["N"]
         # --- adverse first: protective stop / channel exit (pessimistic) ---
         if side > 0:
             eff = pos["stop"]
             if np.isfinite(ex_lo[i]):
                 eff = max(eff, ex_lo[i])
             hit = l[i] <= eff
-            exit_px = (o[i] if o[i] < eff else eff) - cfg.spread_price
+            exit_px = (o[i] if o[i] < eff else eff) - cost_px
         else:
             eff = pos["stop"]
             if np.isfinite(ex_hi[i]):
                 eff = min(eff, ex_hi[i])
             hit = h[i] >= eff
-            exit_px = (o[i] if o[i] > eff else eff) + cfg.spread_price
+            exit_px = (o[i] if o[i] > eff else eff) + cost_px
 
         if hit:
             pnl = 0.0
@@ -150,7 +153,7 @@ def simulate(df: pd.DataFrame, cfg: Cfg):
             reached = (h[i] >= next_level) if side > 0 else (l[i] <= next_level)
             if not reached:
                 break
-            fill = next_level + side * cfg.spread_price
+            fill = next_level + side * cost_px
             pos["units"].append((fill, cfg.risk_per_unit))
             pos["last_fill"] = fill
             pos["stop"] = fill - side * cfg.stop_n * pos["N"]
@@ -163,7 +166,7 @@ def simulate(df: pd.DataFrame, cfg: Cfg):
     # Close any open position at the last close.
     if pos is not None:
         side = pos["side"]
-        exit_px = c[-1] - side * cfg.spread_price
+        exit_px = c[-1] - side * (cfg.spread_price + cfg.cost_atr_frac * pos["N"])
         pnl = sum(cfg.risk_per_unit * (exit_px - ep) / pos["N"] * side for ep, _ in pos["units"])
         equity = pos["eq_open"] * (1.0 + pnl)
         trades.append(pnl)

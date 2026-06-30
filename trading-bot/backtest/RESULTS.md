@@ -139,6 +139,44 @@ equity simulation on a single pair (EURUSD, ~2.8 years).
   years** — not one rangebound FX pair. Win rates of 16–31% with no big trends to
   pay for them is a losing combination.
 
+### Where does the full Turtle work best? (`full_turtle_scan.py`)
+
+Scanning all 15 instruments with an auto-scaling cost (0.02 N/side) shows the
+edge is entirely about **how much an instrument trends**:
+
+**Daily, ranked (best → worst):**
+
+| Instrument | System | Trades | Return | CAGR | Max DD | PF |
+| --- | --- | --- | --- | --- | --- | --- |
+| ETHUSD | S2 | 12 | +147% | +57% | 23% | 5.9 |
+| SPX | S2 | 15 | +64% | +18% | 25% | 3.1 |
+| XAUUSD | S2 | 13 | +51% | +19% | 29% | 2.6 |
+| BTCUSD | S2 | 20 | +48% | +22% | 36% | 2.3 |
+| NDX | S2 | 16 | +30% | +9% | 34% | 1.8 |
+| XAGUSD | S2 | 17 | +23% | +9% | 42% | 1.7 |
+| … | | | | | | |
+| EURUSD | S1 | 36 | −33% | −13% | 49% | 0.6 |
+| AUDUSD | S1 | 38 | −35% | −14% | 48% | 0.6 |
+| NZDUSD | S1 | 44 | −41% | −17% | 54% | 0.5 |
+| GBPUSD | S1 | 43 | −57% | −26% | 60% | 0.3 |
+
+**It works best on the strongest trenders — crypto (ETH, BTC), precious metals
+(gold, silver) and US equity indices (S&P, Nasdaq).** It loses on FX majors
+(EUR, GBP, AUD, NZD, JPY), which mean-revert and chop. H4 shows the same order,
+amplified: ETH +1763% / BTC +744% / XAU +580% — but with **50–65% drawdowns** and
+returns dominated by riding single 2024–25 megatrends through compounding.
+
+**Heavy caveats (why this is not a green light):**
+- **Descriptive, not predictive.** This is the full ~2.5–3y window (in-sample),
+  so it shows where trends *happened*, not where they will be. 2024–25 was an
+  exceptional crypto/gold/equity bull; that regime made Turtle look great.
+- **Small daily samples** (12–44 trades/instrument) — wide error bars.
+- **Brutal drawdowns** (25–65%) and fat returns driven by pyramiding into a few
+  sustained trends — fragile and very hard to sit through live.
+- Correct use is a **diversified basket of genuine trenders, on daily, with small
+  risk**, accepting deep drawdowns — and even then it bleeds in range-bound years.
+  It is *not* a fit for an intraday Deriv scalper or for FX majors.
+
 ## Required next step before live trading
 
 Re-validate on your **actual Deriv symbols and spreads**. Yahoo data and modelled
