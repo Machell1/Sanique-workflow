@@ -1,151 +1,142 @@
-# XAUUSD Trend Expert Advisor for MetaTrader 5
+# Deriv MT5 trading bots
 
-A reworked, bug-fixed gold (XAUUSD) trading strategy delivered in two forms:
+Two MetaTrader 5 Expert Advisors plus a Python reference implementation.
 
-| File | What it is | Where it runs |
+| File | What it is | Use it for |
 | --- | --- | --- |
-| [`mql5/XauusdTrendEA.mq5`](mql5/XauusdTrendEA.mq5) | A native **MT5 Expert Advisor** | Inside the MT5 terminal (chart + Strategy Tester + VPS) |
-| [`python/xauusd_bot.py`](python/xauusd_bot.py) | An external Python bot using the `MetaTrader5` API | A Python process next to a running MT5 terminal |
-
-Both implement the **same strategy and risk rules**, so a Strategy-Tester
-backtest of the EA is representative of the live behaviour of either one.
-
-> ### Honest disclaimer — read this first
-> **No trading bot can be guaranteed to be profitable.** Markets change, spreads
-> and slippage eat edge, and past performance does not predict future results.
-> What this rework does is replace the original prototype's incoherent,
-> bug-ridden signal logic with a *coherent, testable* trend-following strategy
-> and *strict, working* risk controls. Whether it is profitable on your broker,
-> in the current regime, depends entirely on your own backtesting and forward
-> testing. **Test on a demo account first. Trade live at your own risk.**
+| [`mql5/DerivScalperEA.mq5`](mql5/DerivScalperEA.mq5) | **Multi-symbol momentum scalper** | The strategy you asked for: scan every (non-synthetic) symbol on M15, jump on fast movers with pending stop orders, lock profit instantly, cut losses fast. **Primary deliverable.** |
+| [`mql5/XauusdTrendEA.mq5`](mql5/XauusdTrendEA.mq5) | Single-symbol XAUUSD trend EA | A calmer, lower-frequency trend strategy for gold only. |
+| [`python/xauusd_bot.py`](python/xauusd_bot.py) | Python `MetaTrader5` bot | A reference/learning version of the gold trend logic. |
 
 ---
 
-## Why the original prototype was broken
+## Read this before anything else — about the "80% win rate"
 
-The original `improved_trading_bot.py` looked sophisticated but had fundamental
-flaws that made it effectively random:
+You asked for a strategy that locks in green the moment it appears, cuts losers
+just as fast, and reaches an **80% win rate**. Here is the honest engineering
+reality:
 
-1. **It traded signals from arbitrary historical bars.** Pattern detectors
-   scanned all 200 bars and the loop placed trades for *any* matching bar,
-   not just the most recent closed one — so it could enter on a "signal" from
-   hours ago.
-2. **It used a stale historical close as the entry price**, then sent a market
-   order at the live price, so SL/TP geometry rarely matched the intended risk.
-3. **The "order block / FVG / engulfing / liquidity sweep" detectors were
-   numerically meaningless** (e.g. `low[i+1] > high[i-1] * 0.97` matches almost
-   everything; "order blocks" depended on `real_volume`, which is `0` on most
-   gold CFD feeds).
-4. **The indicators it computed (EMA/RSI/MACD) were never used** to make a
-   decision — there was no trend or momentum filter on entries.
-5. **It re-evaluated every 5 minutes** with no "new bar" gate, risking repeated
-   entries on the same setup.
-6. **Filling mode was hard-coded to FOK**, which many brokers reject.
+- **A high win rate is easy to manufacture; a profitable bot is not.** If you
+  take a tiny profit and run a wider stop, you will win most trades — but the
+  occasional full-stop loss can erase many small wins. Win rate alone tells you
+  nothing about whether you make money.
+- **What actually matters is expectancy:** `win% × avg_win − loss% × avg_loss`.
+  An 80% win rate with an average loss 5× the average win is a *losing* system.
+- **No EA can guarantee 80% wins, including this one.** Markets, spread,
+  slippage and gaps all work against very tight scalps, and Deriv (like every
+  broker) earns the spread on every fill.
 
-## What the rework does instead
+This EA is built to give your style the best honest shot:
+- It enters **with** momentum (in front of fast movers) instead of fading it.
+- It ratchets the stop to **break-even+lock the instant the trade is green**, so
+  a winner is very hard to turn into a loser.
+- It uses a **tight initial stop** so losers are cut fast.
+- It keeps **average win ≈ average risk** (default trail/lock), so the math can
+  actually work at a realistic 55–70% hit rate — and if you reach higher in the
+  backtest, great.
 
-A single, transparent rule set that actually uses the indicators:
-
-- **Trend filter:** only go long when `EMA(fast) > EMA(slow)` *and* price is
-  above `EMA(trend=200)`; mirror for shorts.
-- **Momentum filter:** RSI on the correct side of 50 and turning the right way,
-  plus MACD main/signal agreement.
-- **Pullback entry:** price must have pulled back near the fast EMA (within
-  `PullbackAtr × ATR`) and then closed back through it with a candle in the
-  trade's direction. This avoids chasing extended moves.
-- **Decisions are made only on the last *closed* bar, once per new bar.**
-- **ATR-based SL/TP**, **fixed-fractional position sizing**, **break-even at
-  +1R**, **ATR trailing stop**, and a **time-based exit** for stale trades.
-
-### Capital-protection layer
-
-- Risk a fixed fraction of balance per trade (default **0.5%**).
-- **Daily loss limit** (default 3% of day-start balance) → stop for the day.
-- **Max drawdown** halt (default 15% from peak equity).
-- **Max trades per day** (default 4) and a **consecutive-loss circuit breaker**
-  (default 3).
-- **Spread filter** and an optional **trading-session filter**.
-- One open position at a time; orders tagged by **magic number** so the EA only
-  manages its own trades.
+**You must validate the real win rate and expectancy yourself in the Strategy
+Tester and on a Deriv demo account before risking money.** If the backtest does
+not show a positive, stable equity curve with acceptable drawdown, do not trade
+it live. Tune the inputs to your account and the symbols you actually trade.
 
 ---
 
-## Installing the Expert Advisor (recommended)
+## The scalper strategy (`DerivScalperEA`)
 
-1. In MetaTrader 5: **File → Open Data Folder → `MQL5/Experts`**.
-2. Copy `XauusdTrendEA.mq5` into that folder.
-3. Open **MetaEditor** (F4), select the file, and press **Compile** (F7).
-   It should compile with 0 errors.
-4. Back in the terminal, open a **XAUUSD M15** chart and drag
-   **Navigator → Expert Advisors → XauusdTrendEA** onto it.
-5. On the **Common** tab, tick **Allow Algo Trading**. Make sure the global
-   **Algo Trading** button in the toolbar is enabled (green).
-6. Set inputs (see below), press **OK**.
+Exactly the workflow you described, automated across many symbols:
 
-### Backtest before going live
+1. **Scan the universe.** Every M15 bar the EA loops over all symbols in your
+   Market Watch (or a whitelist you provide). **Synthetic indices are excluded**
+   by name (Volatility, Crash, Boom, Step, Jump, Range Break, Vol over, Hybrid,
+   1HZ, …) so it never trades them.
+2. **Find a fast mover.** It measures the move over the last `InpMomentumBars`
+   bars in **ATR units**. If price fell (or, optionally, rose) by at least
+   `InpMomentumAtrMult` ATRs and the last candle agrees, the symbol qualifies.
+3. **Place a pending STOP "in front" of price.** Falling fast → a **Sell Stop**
+   just below the bid; rising fast → a **Buy Stop** just above the ask. The
+   offset is as small as the broker's minimum-stop rule allows ("as close as
+   possible"). While the order waits, it is **trailed to stay glued to price**
+   and **auto-cancelled** after `InpPendingExpiryBars` if never triggered.
+4. **Never let green turn red.** The moment the position is `InpLockTriggerAtr`
+   ATRs in profit, the stop jumps to **break-even + a small lock buffer** (covers
+   spread), then **trails tightly** (`InpTrailAtrMult` ATR) to capture more.
+5. **Cut losses fast.** The initial stop is a tight `InpStopAtrMult` ATR, and a
+   stagnant trade is force-closed after `InpMaxHoldingBars`.
+6. **Portfolio guard rails.** Max simultaneous trades, max trades/day, daily-loss
+   halt, max-drawdown halt, consecutive-loss circuit breaker and a spread filter.
 
-Open **View → Strategy Tester**, choose `XauusdTrendEA`, symbol `XAUUSD`,
-timeframe `M15`, model **"Every tick based on real ticks"**, pick a date range
-of at least 1–2 years, and run. Optimise inputs on one period and validate on a
-separate **out-of-sample** period before trusting the numbers.
+### Why momentum *continuation* (not reversal)
 
-### Going live on XAUUSD
+You said "place a pending order in front" of a rapidly falling asset. That is a
+**continuation** entry — you join the move rather than catch the falling knife.
+That is also what the most repeatable Deriv scalping write-ups use: Buy/Sell
+**Stop** orders beyond the recent extreme with tight risk. Set
+`InpTradeBothSides = false` if you want to trade **only** falling assets (sells).
 
-After a satisfactory backtest **and** a demo-account forward test:
+---
 
-- Attach the EA to a live XAUUSD M15 chart with **Algo Trading** enabled.
-- Keep the terminal (or a VPS) running 24/5.
-- Start with the **smallest risk** you are comfortable losing.
+## Setting it up on Deriv
 
-### Key EA inputs
+1. **Use a no-synthetics account.** In Deriv's Trader's Hub create an **MT5
+   Financial** (or **Financial STP**) login. Those accounts contain only forex,
+   metals, indices, crypto and stocks — *no synthetics at all*. (The EA's name
+   blocklist is a second safety net in case synthetics are ever present.)
+2. **Add the symbols you want scanned** to Market Watch (Ctrl+M → right-click →
+   Symbols). The EA only scans what is in Market Watch. Major FX pairs and gold
+   are the most liquid / scalp-friendly.
+3. **Install the EA:** File → Open Data Folder → `MQL5/Experts`, copy
+   `DerivScalperEA.mq5` there, open MetaEditor (F4) and Compile (F7).
+4. **Attach it to one chart** (any symbol; M15 is fine — the EA scans all
+   symbols regardless of which chart it sits on). Tick **Allow Algo Trading** and
+   enable the global **Algo Trading** toolbar button.
+5. **Backtest first.** Strategy Tester → `DerivScalperEA` → model "Every tick
+   based on real ticks". Note: the Strategy Tester runs a **single symbol** at a
+   time, so test your most-traded pairs individually to gauge per-symbol edge;
+   the multi-symbol scanning is a live/forward-test feature.
+6. **Demo forward-test** for a meaningful sample of trades, then go live with the
+   **smallest** risk you can stomach.
+
+### Key inputs
 
 | Input | Default | Meaning |
 | --- | --- | --- |
-| `InpRiskPercent` | 0.5 | % of balance risked per trade |
-| `InpStopAtrMult` / `InpTakeProfitAtrMult` | 1.8 / 3.0 | SL / TP distance in ATRs |
-| `InpDailyLossLimitPct` | 3.0 | Halt for the day after this daily loss |
-| `InpMaxDrawdownPct` | 15.0 | Halt if equity falls this far from peak |
-| `InpMaxTradesPerDay` | 4 | Cap on new entries per day |
-| `InpMaxConsecLosses` | 3 | Pause after this many losses in a row |
-| `InpMaxSpreadPoints` | 600 | Skip entries when spread is too wide |
-| `InpMagicNumber` | 234000 | Tag for this EA's orders |
+| `InpScanMarketWatch` | true | Scan every Market Watch symbol |
+| `InpSymbolWhitelist` | "" | Comma list to scan instead (e.g. `EURUSD,GBPUSD,XAUUSD`) |
+| `InpSyntheticBlock` | Volatility,Crash,Boom,… | Name keywords to skip (synthetics) |
+| `InpMomentumBars` / `InpMomentumAtrMult` | 6 / 2.0 | How big/fast a move must be to qualify |
+| `InpTradeBothSides` | true | false = only short falling assets |
+| `InpEntryOffsetAtr` | 0.05 | How far in front of price the pending sits |
+| `InpPendingExpiryBars` | 2 | Cancel an untriggered pending after N bars |
+| `InpStopAtrMult` | 1.0 | Initial (tight) stop distance |
+| `InpTakeProfitAtrMult` | 1.5 | Fixed TP distance (0 = trail only) |
+| `InpLockTriggerAtr` | 0.25 | Profit (ATR) at which the stop locks |
+| `InpTrailAtrMult` | 0.5 | Trailing distance after lock |
+| `InpMaxHoldingBars` | 8 | Force-close a stagnant trade |
+| `InpRiskPercent` | 0.5 | Risk per trade (% of balance) |
+| `InpMaxConcurrent` / `InpMaxTradesPerDay` | 3 / 20 | Portfolio caps |
+| `InpDailyLossLimitPct` / `InpMaxDrawdownPct` | 3 / 15 | Hard halts |
+| `InpMaxSpreadPoints` | 200 | Skip symbols when spread is too wide |
+
+> **Tuning tip for win rate vs expectancy:** raising `InpTakeProfitAtrMult`
+> *down* toward `InpStopAtrMult` and lowering `InpLockTriggerAtr` pushes the win
+> rate up but shrinks average win. Backtest the combination — chase a positive
+> equity curve, not a win-rate number.
 
 ---
 
-## Running the Python bot (alternative)
+## XAUUSD trend EA and Python bot
 
-Use this only if you specifically want an external Python process. The EA is
-the better fit for "run on MT5" and for backtesting.
-
-```bash
-cd trading-bot/python
-pip install -r requirements.txt   # MetaTrader5 is Windows-only
-python xauusd_bot.py
-```
-
-Configuration is via environment variables (see the `Config` dataclass in the
-source). To auto-connect, set credentials before launching:
-
-```bash
-set MT5_LOGIN=12345678
-set MT5_PASSWORD=your_password
-set MT5_SERVER=YourBroker-Server
-set MT5_SYMBOL=XAUUSD
-set RISK_PERCENT=0.5
-python xauusd_bot.py
-```
-
-If `MT5_LOGIN`/`MT5_PASSWORD`/`MT5_SERVER` are not set, the bot attaches to the
-terminal session you are already logged into.
-
-> The `MetaTrader5` Python package only runs on Windows alongside an installed
-> MT5 terminal. The bot's strategy/indicator logic is pure pandas/numpy, so it
-> is portable, but live trading requires the Windows terminal.
+`XauusdTrendEA.mq5` and `python/xauusd_bot.py` implement the earlier, calmer
+gold-only trend strategy (EMA trend + RSI/MACD momentum + ATR pullback, with the
+same risk framework). They remain here as alternatives. The Python bot needs
+Windows + an MT5 terminal (`pip install -r python/requirements.txt`).
 
 ---
 
-## Notes on broker symbol names
+## Broker symbol names
 
-Some brokers name gold `GOLD`, `XAUUSD.`, `XAUUSDm`, etc. Set `MT5_SYMBOL`
-(Python) or attach the EA to the correct chart so the symbol matches your
-broker's Market Watch exactly.
+Deriv names forex normally (`EURUSD`, `GBPUSD`, `XAUUSD`) on MT5 Financial
+accounts. If your broker uses suffixes (e.g. `EURUSD.`, `EURUSDm`), the EA still
+works because it scans whatever is in Market Watch — just make sure the
+synthetic blocklist still excludes any synthetic names your account exposes.
