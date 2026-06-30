@@ -20,3 +20,7 @@ release/
 *.msi
 *.blockmap
 latest.yml
+
+# Python
+__pycache__/
+*.pyc
