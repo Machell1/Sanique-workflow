@@ -71,6 +71,46 @@ confirming continuation is the correct direction.
 - `ROBUST` (2 ATR stop) trades a little expectancy for the steadiest curve
   (13/15 instruments, far lower drawdown) and is the safer live starting point.
 
+## Appendix — Turtle (Donchian breakout) comparison
+
+Because the "let winners run" finding is a Turtle principle, I also tested a
+faithful Turtle engine (`turtle_backtest.py` / `turtle_daily.py`): Donchian
+breakout entry, 2N ATR initial stop, trailing opposite-channel exit, no fixed
+target, optional System-1 winner filter. Same IS/OOS protocol, R-multiples,
+cost sweep. **No pyramiding** (that scales size, not edge).
+
+| Config (cost 0.02/side) | IS | OOS 60m | 15m |
+| --- | --- | --- | --- |
+| System1 20/10 (60m) | −0.004R, t=−0.2 | −0.030R, t=−1.1, 4/15 | −0.120R, t=−4.5, 3/15 |
+| System1 20/10 +winner filter | +0.008R, t=0.4 | −0.029R, t=−1.0, 4/15 | −0.105R, t=−3.9, 3/15 |
+| System2 55/20 (60m) | −0.058R, t=−1.8 | −0.091R, t=−1.9, 4/15 | −0.099R, t=−2.0, 5/15 |
+| Fast 10/5 (60m) | +0.004R, t=0.4 | −0.034R, t=−2.3, 6/15 | −0.089R, t=−5.8, 7/15 |
+
+On its **native daily timeframe** (60m resampled to D1, ~735 bars/symbol):
+
+| Config (daily) | ALL frictionless | IS (cost 0.02) | OOS (cost 0.02) |
+| --- | --- | --- | --- |
+| System1 20/10 | +0.021R, t=0.4, 10/15 | −0.012R, t=−0.2 | +0.012R, t=0.1 |
+| System2 55/20 | +0.160R, t=1.5, 9/15 | **+0.205R, t=1.4** | **−0.009R, t=−0.1** |
+
+**Turtle verdict (this basket):** no tradable edge.
+- **Intraday (60m/15m) it is clearly negative** — Donchian breakouts whipsaw at
+  that resolution; ~30% win rate with trends too short to pay for the false
+  breakouts and cost.
+- **Daily System1 is statistically zero** (t≈0); **daily System2 looks great
+  in-sample but the entire edge vanishes out-of-sample** (a couple of big
+  2024–25 trends in gold/indices/crypto, not a repeatable signal). Daily samples
+  are small (239–516 trades total), which is itself a caveat.
+- Fair-use caveat: classic Turtle was built for a **broad, diversified futures
+  portfolio held for weeks–months over many years**. I only tested this specific
+  intraday-derived basket over ~2.5 years, so this does **not** disprove Turtle
+  in its original setting — it shows Turtle is **not** a substitute for the
+  momentum-continuation entry on a Deriv-style intraday/multi-asset scalper.
+
+**Bottom line:** the momentum-pop continuation entry (TP 3 ATR) remains the only
+configuration with a positive, out-of-sample edge on this data; the Turtle
+breakout does not beat it here. The EA was left on the momentum entry.
+
 ## Required next step before live trading
 
 Re-validate on your **actual Deriv symbols and spreads**. Yahoo data and modelled
